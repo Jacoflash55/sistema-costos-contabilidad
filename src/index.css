@@ -1,0 +1,191 @@
+@import 'tailwindcss';
+
+/*
+  Tokens de color. Copiados de `sistema-jacobo` con un acento distinto (verde
+  en vez de azul) para no confundir las dos apps cuando quedan abiertas en dos
+  pestañas de localhost.
+
+  Se declaran como variables normales y se vuelven a declarar para el tema
+  claro; `@theme inline` hace que las utilidades de Tailwind (bg-panel,
+  text-suave, ...) apunten a la variable en el punto de uso, así que cambiar
+  de tema es solo cambiar el atributo data-theme del <html>.
+*/
+:root {
+  --fondo: #0a0e13;
+  --panel: #121821;
+  --panel-alto: #1a2230;
+  --borde: #232c3b;
+  --borde-fuerte: #334155;
+  --texto: #e8edf5;
+  --suave: #94a3b8;
+  --tenue: #64748b;
+  --acento: #2dd4bf;
+  --acento-tenue: #134e4a;
+  --positivo: #34d399;
+  --negativo: #fb7185;
+  --aviso: #fbbf24;
+  --sombra: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+}
+
+:root[data-theme='light'] {
+  --fondo: #f6f7f9;
+  --panel: #ffffff;
+  --panel-alto: #f1f3f7;
+  --borde: #e2e6ed;
+  --borde-fuerte: #cbd5e1;
+  --texto: #0f172a;
+  --suave: #475569;
+  --tenue: #94a3b8;
+  --acento: #0d9488;
+  --acento-tenue: #ccfbf1;
+  --positivo: #059669;
+  --negativo: #e11d48;
+  --aviso: #d97706;
+  --sombra: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px -12px rgb(15 23 42 / 0.12);
+}
+
+@theme inline {
+  --color-fondo: var(--fondo);
+  --color-panel: var(--panel);
+  --color-panel-alto: var(--panel-alto);
+  --color-borde: var(--borde);
+  --color-borde-fuerte: var(--borde-fuerte);
+  --color-texto: var(--texto);
+  --color-suave: var(--suave);
+  --color-tenue: var(--tenue);
+  --color-acento: var(--acento);
+  --color-acento-tenue: var(--acento-tenue);
+  --color-positivo: var(--positivo);
+  --color-negativo: var(--negativo);
+  --color-aviso: var(--aviso);
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  border-color: var(--borde);
+}
+
+html {
+  color-scheme: dark;
+  background: var(--fondo);
+}
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'tnum' 1; /* numeros de ancho fijo: las tablas no bailan */
+}
+
+/* Las cifras siempre con ancho tabular, para que las columnas queden alineadas */
+.cifra {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Scrollbar discreta */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--borde-fuerte);
+  border-radius: 999px;
+  border: 2px solid var(--fondo);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--tenue);
+}
+
+/* Transicion suave al cambiar de tema, sin animar todo lo demas */
+html.transicion-tema,
+html.transicion-tema * {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+/* Quitar las flechas de los input number: en esta app se escribe el numero */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+/* Una fila de Kardex que no se aplico: se ve, pero tachada */
+.no-aplicado {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+/*
+  IMPRESION. La hoja de costos se imprime (y se guarda como PDF desde el
+  navegador) en blanco y negro, sin la navegación ni los botones.
+
+  Los colores se arreglan redefiniendo los tokens: como las utilidades de
+  Tailwind apuntan a las variables en el punto de uso, basta con cambiarlas
+  aquí para que toda la hoja pase a fondo blanco y texto negro, sin tocar un
+  solo componente.
+*/
+@media print {
+  .no-imprimir {
+    display: none !important;
+  }
+
+  :root,
+  :root[data-theme='light'],
+  :root[data-theme='dark'] {
+    --fondo: #ffffff;
+    --panel: #ffffff;
+    --panel-alto: #f4f4f5;
+    --borde: #c9ced6;
+    --borde-fuerte: #6b7280;
+    --texto: #000000;
+    --suave: #333333;
+    --tenue: #555555;
+    --acento: #000000;
+    --positivo: #000000;
+    --negativo: #000000;
+    --aviso: #000000;
+    --sombra: none;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* La hoja ocupa la página entera, sin los márgenes del layout de pantalla */
+  .hoja-imprimible {
+    box-shadow: none !important;
+    border: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .hoja-imprimible table {
+    /* que una tabla no se parta en dos páginas por la mitad de una fila */
+    page-break-inside: auto;
+  }
+  .hoja-imprimible tr {
+    page-break-inside: avoid;
+  }
+  .hoja-imprimible thead {
+    display: table-header-group;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}

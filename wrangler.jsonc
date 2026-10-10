@@ -1,0 +1,22 @@
+/*
+  Config del deploy en Cloudflare Workers como sitio estatico. Va versionada a
+  proposito: asi el deploy es igual siempre y no depende de lo que wrangler
+  adivine ese dia.
+
+  `not_found_handling: single-page-application` hace que cualquier ruta
+  desconocida sirva el index en vez de dar 404. En la practica la app usa
+  HashRouter y el servidor solo ve "/", pero queda por si alguna vez se pasa a
+  rutas de verdad.
+*/
+{
+  "name": "sistema-costos",
+  "compatibility_date": "2026-10-01",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    // Tiene que coincidir con el outDir de Vite.
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

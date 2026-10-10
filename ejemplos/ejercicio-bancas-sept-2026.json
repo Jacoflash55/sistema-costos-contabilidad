@@ -1,0 +1,250 @@
+{
+  "app": "sistema-costos",
+  "version": 1,
+  "exportado": "2026-10-10T00:00:00.000Z",
+  "config": {
+    "version": 1,
+    "empresa": {
+      "nombre": "Empresa XYZ",
+      "razon_social": "Empresa XYZ",
+      "nit": "900.000.000-0",
+      "ciudad": "Medellín",
+      "moneda": "COP",
+      "actividad": "Fabricación de mobiliario urbano por órdenes"
+    },
+    "parametros": {
+      "horas_mes": 240,
+      "recargos": {
+        "extra_diurna": 1.25,
+        "extra_nocturna": 1.75,
+        "recargo_nocturno": 0.35,
+        "dominical": 0.75
+      },
+      "factor_prestacional": 0.53766,
+      "mod_con_factor_prestacional": true,
+      "metodo_inventario": "promedio_ponderado",
+      "base_cif": "horas_mo",
+      "cif_tasa_desde": "real",
+      "metodo_margen": "sobre_precio",
+      "margen_por_defecto_pct": 40,
+      "redondeo_precio_multiplo": 1
+    }
+  },
+  "nomina": {
+    "trabajadores": [
+      {
+        "id": "ta",
+        "codigo": "T-001",
+        "nombre": "Empleado A",
+        "documento": "",
+        "cargo": "Operario de producción",
+        "area": "Planta",
+        "clasificacion": "directa",
+        "modalidad": "mensual",
+        "salario_basico": 2300000,
+        "tarifa_hora": 0,
+        "tiene_auxilio_transporte": false,
+        "tipo_contrato": "termino_indefinido",
+        "fecha_ingreso": "2026-01-01",
+        "activo": true
+      },
+      {
+        "id": "tb",
+        "codigo": "T-002",
+        "nombre": "Empleado B",
+        "documento": "",
+        "cargo": "Operario de producción",
+        "area": "Planta",
+        "clasificacion": "directa",
+        "modalidad": "mensual",
+        "salario_basico": 2300000,
+        "tarifa_hora": 0,
+        "tiene_auxilio_transporte": false,
+        "tipo_contrato": "termino_indefinido",
+        "fecha_ingreso": "2026-01-01",
+        "activo": true
+      }
+    ],
+    "periodos": [
+      {
+        "id": "per1",
+        "nombre": "Septiembre 2026",
+        "mes": "2026-09",
+        "desde": "2026-09-01",
+        "hasta": "2026-09-30",
+        "estado": "abierto"
+      }
+    ],
+    "registros_horas": [
+      { "id": "rh1", "trabajador_id": "ta", "periodo_id": "per1", "fecha": "2026-09-30", "tipo_hora": "ordinaria", "horas": 240 },
+      { "id": "rh2", "trabajador_id": "tb", "periodo_id": "per1", "fecha": "2026-09-30", "tipo_hora": "ordinaria", "horas": 240 }
+    ],
+    "novedades": [],
+    "conceptos": [
+      {
+        "id": "salud_empleado",
+        "nombre": "Salud (aporte del trabajador)",
+        "tipo": "deduccion",
+        "base": "base_prestacional",
+        "porcentaje": 4,
+        "monto_fijo": null,
+        "afecta_base_prestacional": false,
+        "automatico": true,
+        "activo": true
+      },
+      {
+        "id": "pension_empleado",
+        "nombre": "Pensión (aporte del trabajador)",
+        "tipo": "deduccion",
+        "base": "base_prestacional",
+        "porcentaje": 4,
+        "monto_fijo": null,
+        "afecta_base_prestacional": false,
+        "automatico": true,
+        "activo": true
+      }
+    ]
+  },
+  "inventario": {
+    "materias_primas": [
+      {
+        "id": "mad",
+        "codigo": "MP-001",
+        "nombre": "Madera",
+        "descripcion": "Unidad de madera para banca",
+        "unidad": "unidad",
+        "categoria": "Materiales",
+        "cantidad_inicial": 0,
+        "costo_unitario_inicial": 0,
+        "stock_minimo": 0,
+        "proveedor": "",
+        "activo": true
+      },
+      {
+        "id": "met",
+        "codigo": "MP-002",
+        "nombre": "Metal",
+        "descripcion": "Unidad de metal para banca",
+        "unidad": "unidad",
+        "categoria": "Materiales",
+        "cantidad_inicial": 0,
+        "costo_unitario_inicial": 0,
+        "stock_minimo": 0,
+        "proveedor": "",
+        "activo": true
+      }
+    ],
+    "compras": [],
+    "movimientos": [
+      { "id": "k1", "fecha": "2026-09-01", "materia_prima_id": "mad", "tipo": "entrada_compra", "concepto": "Compra 1", "documento": "Compra 1", "cantidad": 200, "costo_unitario": 45000 },
+      { "id": "k2", "fecha": "2026-09-01", "materia_prima_id": "met", "tipo": "entrada_compra", "concepto": "Compra 1", "documento": "Compra 1", "cantidad": 50, "costo_unitario": 60000 },
+      { "id": "k3", "fecha": "2026-09-04", "materia_prima_id": "mad", "tipo": "entrada_compra", "concepto": "Compra 2", "documento": "Compra 2", "cantidad": 100, "costo_unitario": 47000 },
+      { "id": "k4", "fecha": "2026-09-04", "materia_prima_id": "met", "tipo": "entrada_compra", "concepto": "Compra 2", "documento": "Compra 2", "cantidad": 50, "costo_unitario": 59800 },
+      { "id": "k5", "fecha": "2026-09-08", "materia_prima_id": "mad", "tipo": "entrada_compra", "concepto": "Compra 3", "documento": "Compra 3", "cantidad": 50, "costo_unitario": 46100 },
+      { "id": "k6", "fecha": "2026-09-08", "materia_prima_id": "met", "tipo": "entrada_compra", "concepto": "Compra 3", "documento": "Compra 3", "cantidad": 70, "costo_unitario": 60050 },
+      { "id": "k7", "fecha": "2026-09-12", "materia_prima_id": "mad", "tipo": "entrada_compra", "concepto": "Compra 4", "documento": "Compra 4", "cantidad": 150, "costo_unitario": 45400 },
+      { "id": "k8", "fecha": "2026-09-12", "materia_prima_id": "met", "tipo": "entrada_compra", "concepto": "Compra 4", "documento": "Compra 4", "cantidad": 100, "costo_unitario": 60400 },
+      { "id": "k9", "fecha": "2026-09-16", "materia_prima_id": "mad", "tipo": "entrada_compra", "concepto": "Compra 5", "documento": "Compra 5", "cantidad": 200, "costo_unitario": 45350 },
+      { "id": "k10", "fecha": "2026-09-16", "materia_prima_id": "met", "tipo": "entrada_compra", "concepto": "Compra 5", "documento": "Compra 5", "cantidad": 200, "costo_unitario": 61000 }
+    ]
+  },
+  "produccion": {
+    "productos": [
+      {
+        "id": "p1",
+        "codigo": "PT-001",
+        "nombre": "Banca para parque",
+        "unidad": "unidad",
+        "margen_objetivo_pct": null,
+        "precio_referencia": null,
+        "activo": true
+      }
+    ],
+    "recetas": [
+      {
+        "id": "r1",
+        "producto_id": "p1",
+        "version": 1,
+        "rendimiento": 1,
+        "horas_mo_estandar": 0,
+        "horas_maquina_estandar": 0,
+        "vigente": true,
+        "items": [
+          { "materia_prima_id": "mad", "cantidad": 3, "unidad": "unidad", "desperdicio_pct": 0 },
+          { "materia_prima_id": "met", "cantidad": 2, "unidad": "unidad", "desperdicio_pct": 0 }
+        ]
+      }
+    ],
+    "ordenes": [
+      {
+        "id": "op1",
+        "numero": "OP-001",
+        "producto_id": "p1",
+        "cantidad_programada": 200,
+        "cantidad_terminada": 200,
+        "fecha_inicio": "2026-09-01",
+        "fecha_fin": "2026-09-25",
+        "estado": "terminada",
+        "cliente_id": "cl1",
+        "nota": "200 bancas para parques. Entrega 25 de septiembre."
+      }
+    ],
+    "consumos": [
+      { "id": "s1a", "orden_id": "op1", "materia_prima_id": "mad", "fecha": "2026-09-09", "documento": "Salida 1 (tras compra 3)", "cantidad": 300, "unidad": "unidad", "costo_unitario": null },
+      { "id": "s1b", "orden_id": "op1", "materia_prima_id": "met", "fecha": "2026-09-09", "documento": "Salida 1 (tras compra 3)", "cantidad": 100, "unidad": "unidad", "costo_unitario": null },
+      { "id": "s2a", "orden_id": "op1", "materia_prima_id": "mad", "fecha": "2026-09-17", "documento": "Salida 2 (tras compra 5)", "cantidad": 300, "unidad": "unidad", "costo_unitario": null },
+      { "id": "s2b", "orden_id": "op1", "materia_prima_id": "met", "fecha": "2026-09-17", "documento": "Salida 2 (tras compra 5)", "cantidad": 300, "unidad": "unidad", "costo_unitario": null }
+    ],
+    "asignaciones_mo": [
+      { "id": "am1", "orden_id": "op1", "trabajador_id": "ta", "periodo_id": "per1", "fecha": "2026-09-25", "tipo_hora": "ordinaria", "horas": 200, "tarifa_hora": null },
+      { "id": "am2", "orden_id": "op1", "trabajador_id": "tb", "periodo_id": "per1", "fecha": "2026-09-25", "tipo_hora": "ordinaria", "horas": 175, "tarifa_hora": null }
+    ],
+    "otros_directos": [],
+    "hojas": [
+      {
+        "id": "h1",
+        "orden_id": "op1",
+        "numero": "HC-001",
+        "fecha_elaboracion": "2026-09-25",
+        "observaciones": "Orden de 200 bancas para parques del Municipio de Medellín. Entrega 25 de septiembre de 2026.",
+        "estado": "borrador",
+        "margen_metodo": null,
+        "margen_pct": null,
+        "version": 1,
+        "congelada": null,
+        "historial": []
+      }
+    ]
+  },
+  "cif": {
+    "categorias": [
+      { "id": "cat_arriendo", "nombre": "Arrendamiento del área productiva", "naturaleza": "cif", "comportamiento": "fijo", "base": null, "activa": true },
+      { "id": "cat_seguridad", "nombre": "Seguridad y vigilancia de planta", "naturaleza": "cif", "comportamiento": "fijo", "base": null, "activa": true },
+      { "id": "cat_depreciacion", "nombre": "Depreciación de maquinaria", "naturaleza": "cif", "comportamiento": "fijo", "base": null, "activa": true },
+      { "id": "cat_seguros", "nombre": "Seguros de fábrica", "naturaleza": "cif", "comportamiento": "fijo", "base": null, "activa": true },
+      { "id": "cat_administracion", "nombre": "Administración", "naturaleza": "administracion", "comportamiento": "fijo", "base": null, "activa": true }
+    ],
+    "cif": [
+      { "id": "x1", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_arriendo", "concepto": "Arrendamiento de la fábrica", "monto": 5000000, "documento": "", "presupuestado": false },
+      { "id": "x2", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_seguridad", "concepto": "Alarma fábrica", "monto": 70000, "documento": "", "presupuestado": false },
+      { "id": "x3", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_depreciacion", "concepto": "Depreciación maquinaria", "monto": 850000, "documento": "", "presupuestado": false },
+      { "id": "x4", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_seguros", "concepto": "Seguro fábrica", "monto": 650000, "documento": "", "presupuestado": false },
+      { "id": "x5", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_administracion", "concepto": "Software administrativo", "monto": 200000, "documento": "", "presupuestado": false },
+      { "id": "x6", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_administracion", "concepto": "Arrendamiento oficina administrativa", "monto": 3500000, "documento": "", "presupuestado": false }
+    ]
+  },
+  "comercial": {
+    "clientes": [
+      {
+        "id": "cl1",
+        "nombre": "Municipio de Medellín",
+        "nit": "890.905.211-1",
+        "contacto": "Secretaría de Infraestructura",
+        "ciudad": "Medellín",
+        "activo": true
+      }
+    ],
+    "ventas": [],
+    "gastos": []
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "trabajadores": [],
+  "periodos": [],
+  "registros_horas": [],
+  "novedades": [],
+  "conceptos": [
+    {
+      "id": "auxilio_transporte",
+      "nombre": "Auxilio de transporte",
+      "tipo": "devengado",
+      "base": "fijo",
+      "porcentaje": null,
+      "monto_fijo": 200000,
+      "afecta_base_prestacional": false,
+      "automatico": true,
+      "requiere_auxilio_transporte": true,
+      "activo": true,
+      "nota": "ACADÉMICO: monto editable. Se le aplica solo a quien tenga marcado el auxilio en su ficha."
+    },
+    {
+      "id": "salud_empleado",
+      "nombre": "Salud (aporte del trabajador)",
+      "tipo": "deduccion",
+      "base": "base_prestacional",
+      "porcentaje": 4,
+      "monto_fijo": null,
+      "afecta_base_prestacional": false,
+      "automatico": true,
+      "activo": true,
+      "nota": "ACADÉMICO: porcentaje editable, sin IBC ni topes."
+    },
+    {
+      "id": "pension_empleado",
+      "nombre": "Pensión (aporte del trabajador)",
+      "tipo": "deduccion",
+      "base": "base_prestacional",
+      "porcentaje": 4,
+      "monto_fijo": null,
+      "afecta_base_prestacional": false,
+      "automatico": true,
+      "activo": true,
+      "nota": "ACADÉMICO: porcentaje editable, sin IBC ni topes."
+    },
+    {
+      "id": "bonificacion",
+      "nombre": "Bonificación",
+      "tipo": "devengado",
+      "base": "fijo",
+      "porcentaje": null,
+      "monto_fijo": null,
+      "afecta_base_prestacional": false,
+      "automatico": false,
+      "activo": true,
+      "nota": "Se registra como novedad, con el monto de ese período."
+    },
+    {
+      "id": "deduccion_prestamo",
+      "nombre": "Cuota de préstamo",
+      "tipo": "deduccion",
+      "base": "fijo",
+      "porcentaje": null,
+      "monto_fijo": null,
+      "afecta_base_prestacional": false,
+      "automatico": false,
+      "activo": true,
+      "nota": "Se registra como novedad, con el monto de ese período."
+    }
+  ]
+}

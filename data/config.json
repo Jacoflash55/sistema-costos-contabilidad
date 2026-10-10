@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "empresa": {
+    "nombre": "Mi pequeña empresa",
+    "razon_social": "Mi Pequeña Empresa S.A.S.",
+    "nit": "900.000.000-0",
+    "ciudad": "Medellín",
+    "moneda": "COP",
+    "actividad": "Fabricación por órdenes de producción"
+  },
+  "parametros": {
+    "horas_mes": 240,
+    "recargos": {
+      "extra_diurna": 1.25,
+      "extra_nocturna": 1.75,
+      "recargo_nocturno": 0.35,
+      "dominical": 0.75
+    },
+    "factor_prestacional": 0.52,
+    "mod_con_factor_prestacional": true,
+    "metodo_inventario": "promedio_ponderado",
+    "base_cif": "unidades",
+    "metodo_margen": "sobre_costo",
+    "margen_por_defecto_pct": 30,
+    "redondeo_precio_multiplo": 100
+  }
+}

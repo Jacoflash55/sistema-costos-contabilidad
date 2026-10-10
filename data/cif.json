@@ -1,0 +1,92 @@
+{
+  "categorias": [
+    {
+      "id": "cat_mat_ind",
+      "nombre": "Materiales indirectos",
+      "naturaleza": "cif",
+      "comportamiento": "variable",
+      "base": null,
+      "activa": true,
+      "nota": "Lija, pegante, estopa: lo que se usa en planta y no vale la pena rastrear por orden."
+    },
+    {
+      "id": "cat_mo_ind",
+      "nombre": "Mano de obra indirecta",
+      "naturaleza": "cif",
+      "comportamiento": "fijo",
+      "base": null,
+      "activa": true,
+      "nota": "El costo-empresa de los trabajadores clasificados como MOI en Nómina."
+    },
+    {
+      "id": "cat_servicios",
+      "nombre": "Servicios públicos de planta",
+      "naturaleza": "cif",
+      "comportamiento": "variable",
+      "base": null,
+      "activa": true,
+      "nota": "Energía, agua y gas del área productiva."
+    },
+    {
+      "id": "cat_mantenimiento",
+      "nombre": "Mantenimiento",
+      "naturaleza": "cif",
+      "comportamiento": "variable",
+      "base": null,
+      "activa": true
+    },
+    {
+      "id": "cat_arriendo",
+      "nombre": "Arriendo del área productiva",
+      "naturaleza": "cif",
+      "comportamiento": "fijo",
+      "base": null,
+      "activa": true,
+      "nota": "Solo la parte de planta. El arriendo de la oficina va en administración."
+    },
+    {
+      "id": "cat_depreciacion",
+      "nombre": "Depreciación de maquinaria",
+      "naturaleza": "cif",
+      "comportamiento": "fijo",
+      "base": null,
+      "activa": true
+    },
+    {
+      "id": "cat_otros_cif",
+      "nombre": "Otros CIF",
+      "naturaleza": "cif",
+      "comportamiento": "variable",
+      "base": null,
+      "activa": true
+    },
+    {
+      "id": "cat_administracion",
+      "nombre": "Administración",
+      "naturaleza": "administracion",
+      "comportamiento": "fijo",
+      "base": null,
+      "activa": true,
+      "nota": "Gasto del período: NO entra al costo del producto."
+    },
+    {
+      "id": "cat_ventas",
+      "nombre": "Ventas y distribución",
+      "naturaleza": "ventas",
+      "comportamiento": "variable",
+      "base": null,
+      "activa": true,
+      "nota": "Gasto del período: NO entra al costo del producto."
+    },
+    {
+      "id": "cat_financiero",
+      "nombre": "Financieros",
+      "naturaleza": "financiero",
+      "comportamiento": "fijo",
+      "base": null,
+      "activa": true,
+      "nota": "Gasto del período: NO entra al costo del producto."
+    }
+  ],
+  "cif": []
+}
