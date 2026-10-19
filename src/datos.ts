@@ -20,6 +20,7 @@ import configJson from '../data/config.json'
 import inventarioJson from '../data/inventario.json'
 import nominaJson from '../data/nomina.json'
 import produccionJson from '../data/produccion.json'
+import tallerJson from '../ejemplos/taller-octubre-xyz.json'
 
 import { calcularCIF, periodoDeOrden } from './lib/cif'
 import { escenarioEquilibrio } from './lib/equilibrio'
@@ -73,6 +74,23 @@ export const COMERCIAL_BASE = comercialJson as unknown as DatosComercial
  */
 export const VERSION_DATOS = CONFIG_BASE.version
 
+
+/*
+  EL TALLER DE EJEMPLO, METIDO EN EL BUNDLE.
+
+  Va adentro de la app a proposito, no en una carpeta que haya que buscar: en
+  un salon de clase, con el sitio abierto desde un computador prestado, no hay
+  archivo que importar ni USB que conectar. Un clic y los datos estan.
+
+  Son unos 28 KB, lo que pesa una foto chica. Se paga una vez y se gana poder
+  mostrar el sistema funcionando desde cualquier dispositivo.
+*/
+export const EJEMPLO_TALLER = tallerJson as unknown as Respaldo
+
+/** El JSON tal cual, para pasarselo a `importarTodo`. */
+export function textoEjemploTaller(): string {
+  return JSON.stringify(EJEMPLO_TALLER)
+}
 /** Los valores de fabrica: para el boton de Reiniciar y para comparar. */
 export const DATOS_DE_FABRICA: DatosCrudos = {
   config: CONFIG_BASE,

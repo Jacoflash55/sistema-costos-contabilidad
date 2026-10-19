@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
   Aviso,
   Boton,
+  BotonConfirmar,
   Campo,
   Casilla,
   CeldaEditable,
@@ -18,6 +20,7 @@ import {
 } from '../components/ui'
 import type { Columna } from '../components/ui'
 import { useEstado } from '../contexto'
+import { textoEjemploTaller } from '../datos'
 import { UNIDAD_BASE } from '../lib/cif'
 import { equilibrioMezcla } from '../lib/equilibrio'
 import { cop, pct } from '../lib/formato'
@@ -322,6 +325,74 @@ function AtajoEquilibrio() {
   )
 }
 
+/**
+ * Carga el taller de ejemplo de un clic.
+ *
+ * Existe por una razon muy concreta: mostrar el sistema desde un computador
+ * prestado, en un salon, sin tener que conectar un USB ni buscar un archivo
+ * en el correo. El respaldo viaja dentro de la app.
+ *
+ * REEMPLAZA TODO, asi que pide confirmacion y ofrece bajar un respaldo de lo
+ * que hay antes de pisarlo.
+ */
+function CargarEjemplo() {
+  const { importarTodo, exportarTodo, hayCambiosLocales } = useEstado()
+  const [mensaje, setMensaje] = useState<string | null>(null)
+
+  const cargar = () => {
+    const r = importarTodo(textoEjemploTaller())
+    setMensaje(
+      r.ok
+        ? 'Listo: el taller de la empresa XYZ quedó cargado. Mirá las hojas de costos.'
+        : `No se pudo cargar: ${r.error}`,
+    )
+  }
+
+  return (
+    <Tarjeta>
+      <TituloSeccion
+        nota="Las cinco compras, las dos órdenes, los cinco operarios y los CIF del mes, ya cargados."
+        acciones={
+          <div className="flex flex-wrap gap-2">
+            {hayCambiosLocales && (
+              <Boton variante="fantasma" onClick={exportarTodo} titulo="Bajar lo que hay ahora, antes de reemplazarlo">
+                ⬇ Guardar lo actual
+              </Boton>
+            )}
+            <BotonConfirmar
+              variante="secundario"
+              textoConfirmar="Sí, reemplazar todo"
+              titulo="Reemplaza todos los datos por el taller resuelto"
+              onConfirmar={cargar}
+            >
+              Cargar el taller de ejemplo
+            </BotonConfirmar>
+          </div>
+        }
+      >
+        Taller de octubre · empresa XYZ
+      </TituloSeccion>
+
+      <p className="text-sm text-suave">
+        Sirve para dos cosas: ver el sistema funcionando con datos de verdad sin cargar nada, y
+        comparar contra tus propios números si alguno no te cuadra. <strong>Reemplaza todo</strong> lo
+        que tengas cargado, así que si estás a mitad de un ejercicio, bajá primero un respaldo.
+      </p>
+
+      {mensaje && (
+        <Aviso tono={mensaje.startsWith('Listo') ? 'positivo' : 'negativo'} className="mt-3">
+          <div className="flex items-start justify-between gap-3">
+            <p>{mensaje}</p>
+            <button type="button" onClick={() => setMensaje(null)} className="shrink-0 text-xs underline opacity-70">
+              cerrar
+            </button>
+          </div>
+        </Aviso>
+      )}
+    </Tarjeta>
+  )
+}
+
 export function Configuracion() {
   const { config, setConfig, calculado, hayCambiosLocales } = useEstado()
   const { empresa, parametros } = config
@@ -366,6 +437,9 @@ export function Configuracion() {
           volvés a los datos de fábrica.
         </Aviso>
       )}
+
+      {/* ---------- cargar el taller de ejemplo ---------- */}
+      <CargarEjemplo />
 
       {/* ---------- atajo al punto de equilibrio ---------- */}
       <AtajoEquilibrio />

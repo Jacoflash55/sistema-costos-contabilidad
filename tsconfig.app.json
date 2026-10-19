@@ -18,5 +18,5 @@
     "noUncheckedSideEffectImports": true,
     "isolatedModules": true
   },
-  "include": ["src", "tests", "data"]
+  "include": ["src","tests","data","ejemplos"]
 }
