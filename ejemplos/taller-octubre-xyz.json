@@ -1,0 +1,1057 @@
+{
+  "app": "sistema-costos",
+  "version": 1,
+  "exportado": "2026-10-17T00:00:00.000Z",
+  "config": {
+    "version": 1,
+    "empresa": {
+      "nombre": "Empresa XYZ",
+      "razon_social": "Empresa XYZ S.A.S.",
+      "nit": "900.000.000-0",
+      "direccion": "",
+      "ciudad": "Medellín",
+      "telefono": "",
+      "actividad": "Fabricación de muebles"
+    },
+    "parametros": {
+      "horas_mes": 210,
+      "recargos": {
+        "extra_diurna": 1.25,
+        "extra_nocturna": 1.75,
+        "recargo_nocturno": 0.35,
+        "dominical": 0.9,
+        "recargo_nocturno_dominical": 1.25,
+        "extra_diurna_dominical": 2.15,
+        "extra_nocturna_dominical": 2.65
+      },
+      "aportes_empleador": [
+        {
+          "id": "cesantias",
+          "grupo": "prestaciones",
+          "nombre": "Cesantías",
+          "pct": 8.33,
+          "activo": true,
+          "cuando_corresponda": false,
+          "base_con_auxilio": true
+        },
+        {
+          "id": "prima",
+          "grupo": "prestaciones",
+          "nombre": "Prima de servicios",
+          "pct": 8.33,
+          "activo": true,
+          "cuando_corresponda": false,
+          "base_con_auxilio": true
+        },
+        {
+          "id": "intereses_cesantias",
+          "grupo": "prestaciones",
+          "nombre": "Intereses sobre cesantías",
+          "pct": 1,
+          "activo": true,
+          "cuando_corresponda": false,
+          "base_con_auxilio": true
+        },
+        {
+          "id": "vacaciones",
+          "grupo": "prestaciones",
+          "nombre": "Vacaciones",
+          "pct": 4.17,
+          "activo": true,
+          "cuando_corresponda": false,
+          "base_con_auxilio": false
+        },
+        {
+          "id": "pension_empleador",
+          "grupo": "seguridad_social",
+          "nombre": "Pensión (empleador)",
+          "pct": 12,
+          "activo": true,
+          "cuando_corresponda": false,
+          "base_con_auxilio": false
+        },
+        {
+          "id": "salud_empleador",
+          "grupo": "seguridad_social",
+          "nombre": "Salud (empleador)",
+          "pct": 8.5,
+          "activo": false,
+          "cuando_corresponda": true,
+          "base_con_auxilio": false
+        },
+        {
+          "id": "caja",
+          "grupo": "parafiscales",
+          "nombre": "Caja de compensación",
+          "pct": 4,
+          "activo": true,
+          "cuando_corresponda": false,
+          "base_con_auxilio": false
+        },
+        {
+          "id": "sena",
+          "grupo": "parafiscales",
+          "nombre": "SENA",
+          "pct": 2,
+          "activo": false,
+          "cuando_corresponda": true,
+          "base_con_auxilio": false
+        },
+        {
+          "id": "icbf",
+          "grupo": "parafiscales",
+          "nombre": "ICBF",
+          "pct": 3,
+          "activo": false,
+          "cuando_corresponda": true,
+          "base_con_auxilio": false
+        }
+      ],
+      "arl_clases": {
+        "I": 0.522,
+        "II": 1.044,
+        "III": 2.436,
+        "IV": 4.35,
+        "V": 6.96
+      },
+      "prorratear_ordinarias": false,
+      "mod_con_factor_prestacional": true,
+      "tarifa_mod_desde": "liquidacion",
+      "metodo_inventario": "promedio_ponderado",
+      "base_cif": "horas_mo",
+      "cif_tasa_desde": "real",
+      "nivel_actividad_normal": 1050,
+      "metodo_margen": "sobre_precio",
+      "margen_por_defecto_pct": 35,
+      "redondeo_precio_multiplo": 1
+    }
+  },
+  "nomina": {
+    "trabajadores": [
+      {
+        "id": "op_a",
+        "codigo": "OP-001",
+        "nombre": "Operario A",
+        "cargo": "Operario de producción",
+        "area": "Planta",
+        "clasificacion": "directa",
+        "modalidad": "mensual",
+        "salario_basico": 2300000,
+        "tarifa_hora": 0,
+        "tiene_auxilio_transporte": true,
+        "tipo_contrato": "termino_indefinido",
+        "clase_riesgo": "III",
+        "fecha_ingreso": "2026-01-01",
+        "activo": true
+      },
+      {
+        "id": "op_b",
+        "codigo": "OP-002",
+        "nombre": "Operario B",
+        "cargo": "Operario de producción",
+        "area": "Planta",
+        "clasificacion": "directa",
+        "modalidad": "mensual",
+        "salario_basico": 2300000,
+        "tarifa_hora": 0,
+        "tiene_auxilio_transporte": true,
+        "tipo_contrato": "termino_indefinido",
+        "clase_riesgo": "III",
+        "fecha_ingreso": "2026-01-01",
+        "activo": true
+      },
+      {
+        "id": "op_c",
+        "codigo": "OP-003",
+        "nombre": "Operario C",
+        "cargo": "Operario de producción",
+        "area": "Planta",
+        "clasificacion": "directa",
+        "modalidad": "mensual",
+        "salario_basico": 2300000,
+        "tarifa_hora": 0,
+        "tiene_auxilio_transporte": true,
+        "tipo_contrato": "termino_indefinido",
+        "clase_riesgo": "III",
+        "fecha_ingreso": "2026-01-01",
+        "activo": true
+      },
+      {
+        "id": "op_d",
+        "codigo": "OP-004",
+        "nombre": "Operario D",
+        "cargo": "Operario de producción",
+        "area": "Planta",
+        "clasificacion": "directa",
+        "modalidad": "mensual",
+        "salario_basico": 2300000,
+        "tarifa_hora": 0,
+        "tiene_auxilio_transporte": true,
+        "tipo_contrato": "termino_indefinido",
+        "clase_riesgo": "III",
+        "fecha_ingreso": "2026-01-01",
+        "activo": true
+      },
+      {
+        "id": "op_e",
+        "codigo": "OP-005",
+        "nombre": "Operario E",
+        "cargo": "Operario de producción",
+        "area": "Planta",
+        "clasificacion": "directa",
+        "modalidad": "mensual",
+        "salario_basico": 2300000,
+        "tarifa_hora": 0,
+        "tiene_auxilio_transporte": true,
+        "tipo_contrato": "termino_indefinido",
+        "clase_riesgo": "III",
+        "fecha_ingreso": "2026-01-01",
+        "activo": true
+      }
+    ],
+    "periodos": [
+      {
+        "id": "per_sep",
+        "nombre": "Septiembre 2026",
+        "mes": "2026-09",
+        "desde": "2026-09-01",
+        "hasta": "2026-09-30",
+        "estado": "abierto"
+      }
+    ],
+    "registros_horas": [
+      {
+        "id": "rh1",
+        "trabajador_id": "op_a",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-30",
+        "tipo_hora": "ordinaria",
+        "horas": 210
+      },
+      {
+        "id": "rh2",
+        "trabajador_id": "op_b",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-30",
+        "tipo_hora": "ordinaria",
+        "horas": 210
+      },
+      {
+        "id": "rh3",
+        "trabajador_id": "op_c",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-30",
+        "tipo_hora": "ordinaria",
+        "horas": 210
+      },
+      {
+        "id": "rh4",
+        "trabajador_id": "op_d",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-30",
+        "tipo_hora": "ordinaria",
+        "horas": 210
+      },
+      {
+        "id": "rh5",
+        "trabajador_id": "op_e",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-30",
+        "tipo_hora": "ordinaria",
+        "horas": 210
+      }
+    ],
+    "conceptos": [
+      {
+        "id": "auxilio_transporte",
+        "nombre": "Auxilio de transporte",
+        "tipo": "devengado",
+        "base": "fijo",
+        "porcentaje": null,
+        "monto_fijo": 249095,
+        "afecta_base_prestacional": false,
+        "automatico": true,
+        "requiere_auxilio_transporte": true,
+        "activo": true,
+        "nota": "No causa pensión, salud, ARL ni parafiscales, pero sí entra a cesantías, prima e intereses."
+      },
+      {
+        "id": "salud_empleado",
+        "nombre": "Salud (aporte del trabajador)",
+        "tipo": "deduccion",
+        "base": "base_prestacional",
+        "porcentaje": 4,
+        "monto_fijo": null,
+        "afecta_base_prestacional": false,
+        "automatico": true,
+        "activo": true
+      },
+      {
+        "id": "pension_empleado",
+        "nombre": "Pensión (aporte del trabajador)",
+        "tipo": "deduccion",
+        "base": "base_prestacional",
+        "porcentaje": 4,
+        "monto_fijo": null,
+        "afecta_base_prestacional": false,
+        "automatico": true,
+        "activo": true
+      }
+    ],
+    "novedades": []
+  },
+  "inventario": {
+    "materias_primas": [
+      {
+        "id": "mad",
+        "codigo": "MP-001",
+        "nombre": "Madera",
+        "descripcion": "Unidad de madera",
+        "unidad": "unidad",
+        "categoria": "Materiales",
+        "cantidad_inicial": 0,
+        "costo_unitario_inicial": 0,
+        "stock_minimo": 0,
+        "proveedor": "",
+        "activo": true
+      },
+      {
+        "id": "met",
+        "codigo": "MP-002",
+        "nombre": "Metal",
+        "descripcion": "Unidad de metal",
+        "unidad": "unidad",
+        "categoria": "Materiales",
+        "cantidad_inicial": 0,
+        "costo_unitario_inicial": 0,
+        "stock_minimo": 0,
+        "proveedor": "",
+        "activo": true
+      },
+      {
+        "id": "pla",
+        "codigo": "MP-003",
+        "nombre": "Plástico",
+        "descripcion": "Unidad de plástico",
+        "unidad": "unidad",
+        "categoria": "Materiales",
+        "cantidad_inicial": 0,
+        "costo_unitario_inicial": 0,
+        "stock_minimo": 0,
+        "proveedor": "",
+        "activo": true
+      },
+      {
+        "id": "vid",
+        "codigo": "MP-004",
+        "nombre": "Vidrio",
+        "descripcion": "Unidad de vidrio",
+        "unidad": "unidad",
+        "categoria": "Materiales",
+        "cantidad_inicial": 0,
+        "costo_unitario_inicial": 0,
+        "stock_minimo": 0,
+        "proveedor": "",
+        "activo": true
+      }
+    ],
+    "compras": [],
+    "movimientos": [
+      {
+        "id": "k1mad",
+        "fecha": "2026-09-01",
+        "materia_prima_id": "mad",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 1",
+        "documento": "COMPRA-1",
+        "cantidad": 100,
+        "costo_unitario": 40000
+      },
+      {
+        "id": "k1met",
+        "fecha": "2026-09-01",
+        "materia_prima_id": "met",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 1",
+        "documento": "COMPRA-1",
+        "cantidad": 100,
+        "costo_unitario": 55000
+      },
+      {
+        "id": "k1pla",
+        "fecha": "2026-09-01",
+        "materia_prima_id": "pla",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 1",
+        "documento": "COMPRA-1",
+        "cantidad": 50,
+        "costo_unitario": 20000
+      },
+      {
+        "id": "k1vid",
+        "fecha": "2026-09-01",
+        "materia_prima_id": "vid",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 1",
+        "documento": "COMPRA-1",
+        "cantidad": 100,
+        "costo_unitario": 35000
+      },
+      {
+        "id": "k2mad",
+        "fecha": "2026-09-05",
+        "materia_prima_id": "mad",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 2",
+        "documento": "COMPRA-2",
+        "cantidad": 50,
+        "costo_unitario": 41000
+      },
+      {
+        "id": "k2met",
+        "fecha": "2026-09-05",
+        "materia_prima_id": "met",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 2",
+        "documento": "COMPRA-2",
+        "cantidad": 100,
+        "costo_unitario": 57000
+      },
+      {
+        "id": "k2pla",
+        "fecha": "2026-09-05",
+        "materia_prima_id": "pla",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 2",
+        "documento": "COMPRA-2",
+        "cantidad": 30,
+        "costo_unitario": 21000
+      },
+      {
+        "id": "k2vid",
+        "fecha": "2026-09-05",
+        "materia_prima_id": "vid",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 2",
+        "documento": "COMPRA-2",
+        "cantidad": 120,
+        "costo_unitario": 36000
+      },
+      {
+        "id": "k3mad",
+        "fecha": "2026-09-10",
+        "materia_prima_id": "mad",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 3",
+        "documento": "COMPRA-3",
+        "cantidad": 50,
+        "costo_unitario": 42000
+      },
+      {
+        "id": "k3met",
+        "fecha": "2026-09-10",
+        "materia_prima_id": "met",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 3",
+        "documento": "COMPRA-3",
+        "cantidad": 100,
+        "costo_unitario": 58000
+      },
+      {
+        "id": "k3pla",
+        "fecha": "2026-09-10",
+        "materia_prima_id": "pla",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 3",
+        "documento": "COMPRA-3",
+        "cantidad": 50,
+        "costo_unitario": 20500
+      },
+      {
+        "id": "k3vid",
+        "fecha": "2026-09-10",
+        "materia_prima_id": "vid",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 3",
+        "documento": "COMPRA-3",
+        "cantidad": 110,
+        "costo_unitario": 35800
+      },
+      {
+        "id": "k4mad",
+        "fecha": "2026-09-15",
+        "materia_prima_id": "mad",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 4",
+        "documento": "COMPRA-4",
+        "cantidad": 70,
+        "costo_unitario": 43000
+      },
+      {
+        "id": "k4met",
+        "fecha": "2026-09-15",
+        "materia_prima_id": "met",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 4",
+        "documento": "COMPRA-4",
+        "cantidad": 100,
+        "costo_unitario": 59000
+      },
+      {
+        "id": "k4pla",
+        "fecha": "2026-09-15",
+        "materia_prima_id": "pla",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 4",
+        "documento": "COMPRA-4",
+        "cantidad": 40,
+        "costo_unitario": 20800
+      },
+      {
+        "id": "k4vid",
+        "fecha": "2026-09-15",
+        "materia_prima_id": "vid",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 4",
+        "documento": "COMPRA-4",
+        "cantidad": 200,
+        "costo_unitario": 37000
+      },
+      {
+        "id": "k5mad",
+        "fecha": "2026-09-20",
+        "materia_prima_id": "mad",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 5",
+        "documento": "COMPRA-5",
+        "cantidad": 70,
+        "costo_unitario": 45350
+      },
+      {
+        "id": "k5met",
+        "fecha": "2026-09-20",
+        "materia_prima_id": "met",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 5",
+        "documento": "COMPRA-5",
+        "cantidad": 100,
+        "costo_unitario": 61000
+      },
+      {
+        "id": "k5pla",
+        "fecha": "2026-09-20",
+        "materia_prima_id": "pla",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 5",
+        "documento": "COMPRA-5",
+        "cantidad": 30,
+        "costo_unitario": 21100
+      },
+      {
+        "id": "k5vid",
+        "fecha": "2026-09-20",
+        "materia_prima_id": "vid",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 5",
+        "documento": "COMPRA-5",
+        "cantidad": 150,
+        "costo_unitario": 37050
+      }
+    ]
+  },
+  "produccion": {
+    "productos": [
+      {
+        "id": "p_mesa",
+        "codigo": "PT-001",
+        "nombre": "Mesa",
+        "unidad": "unidad",
+        "margen_objetivo_pct": 35,
+        "precio_referencia": null,
+        "activo": true
+      },
+      {
+        "id": "p_vitrina",
+        "codigo": "PT-002",
+        "nombre": "Vitrina",
+        "unidad": "unidad",
+        "margen_objetivo_pct": 35,
+        "precio_referencia": null,
+        "activo": true
+      }
+    ],
+    "recetas": [
+      {
+        "id": "r_mesa",
+        "producto_id": "p_mesa",
+        "version": 1,
+        "rendimiento": 1,
+        "items": [
+          {
+            "materia_prima_id": "mad",
+            "cantidad": 3,
+            "unidad": "unidad",
+            "desperdicio_pct": 0
+          },
+          {
+            "materia_prima_id": "met",
+            "cantidad": 1,
+            "unidad": "unidad",
+            "desperdicio_pct": 0
+          },
+          {
+            "materia_prima_id": "pla",
+            "cantidad": 1,
+            "unidad": "unidad",
+            "desperdicio_pct": 0
+          }
+        ],
+        "horas_mo_estandar": 0,
+        "horas_maquina_estandar": 0,
+        "vigente": true
+      },
+      {
+        "id": "r_vitrina",
+        "producto_id": "p_vitrina",
+        "version": 1,
+        "rendimiento": 1,
+        "items": [
+          {
+            "materia_prima_id": "vid",
+            "cantidad": 8,
+            "unidad": "unidad",
+            "desperdicio_pct": 0
+          },
+          {
+            "materia_prima_id": "met",
+            "cantidad": 4,
+            "unidad": "unidad",
+            "desperdicio_pct": 0
+          },
+          {
+            "materia_prima_id": "pla",
+            "cantidad": 1,
+            "unidad": "unidad",
+            "desperdicio_pct": 0
+          }
+        ],
+        "horas_mo_estandar": 0,
+        "horas_maquina_estandar": 0,
+        "vigente": true
+      }
+    ],
+    "ordenes": [
+      {
+        "id": "op_mesas",
+        "numero": "OP-001",
+        "producto_id": "p_mesa",
+        "cliente_id": "cli_a",
+        "cantidad_programada": 100,
+        "cantidad_terminada": 100,
+        "estado": "terminada",
+        "fecha_inicio": "2026-09-01",
+        "fecha_fin": "2026-09-20",
+        "nota": "100 mesas para el cliente A."
+      },
+      {
+        "id": "op_vitrinas",
+        "numero": "OP-002",
+        "producto_id": "p_vitrina",
+        "cliente_id": "cli_b",
+        "cantidad_programada": 80,
+        "cantidad_terminada": 80,
+        "estado": "terminada",
+        "fecha_inicio": "2026-09-01",
+        "fecha_fin": "2026-09-20",
+        "nota": "80 vitrinas para el cliente B."
+      }
+    ],
+    "consumos": [
+      {
+        "id": "c1",
+        "orden_id": "op_mesas",
+        "materia_prima_id": "mad",
+        "fecha": "2026-09-10",
+        "documento": "SALIDA-1",
+        "cantidad": 150,
+        "unidad": "unidad",
+        "costo_unitario": null,
+        "nota": "Salida a producción al final de la compra 3"
+      },
+      {
+        "id": "c2",
+        "orden_id": "op_mesas",
+        "materia_prima_id": "met",
+        "fecha": "2026-09-10",
+        "documento": "SALIDA-1",
+        "cantidad": 100,
+        "unidad": "unidad",
+        "costo_unitario": null,
+        "nota": "Salida a producción al final de la compra 3"
+      },
+      {
+        "id": "c3",
+        "orden_id": "op_vitrinas",
+        "materia_prima_id": "met",
+        "fecha": "2026-09-10",
+        "documento": "SALIDA-1",
+        "cantidad": 150,
+        "unidad": "unidad",
+        "costo_unitario": null,
+        "nota": "Salida a producción al final de la compra 3"
+      },
+      {
+        "id": "c4",
+        "orden_id": "op_mesas",
+        "materia_prima_id": "pla",
+        "fecha": "2026-09-10",
+        "documento": "SALIDA-1",
+        "cantidad": 40,
+        "unidad": "unidad",
+        "costo_unitario": null,
+        "nota": "Salida a producción al final de la compra 3"
+      },
+      {
+        "id": "c5",
+        "orden_id": "op_vitrinas",
+        "materia_prima_id": "pla",
+        "fecha": "2026-09-10",
+        "documento": "SALIDA-1",
+        "cantidad": 40,
+        "unidad": "unidad",
+        "costo_unitario": null,
+        "nota": "Salida a producción al final de la compra 3"
+      },
+      {
+        "id": "c6",
+        "orden_id": "op_vitrinas",
+        "materia_prima_id": "vid",
+        "fecha": "2026-09-10",
+        "documento": "SALIDA-1",
+        "cantidad": 280,
+        "unidad": "unidad",
+        "costo_unitario": null,
+        "nota": "Salida a producción al final de la compra 3"
+      },
+      {
+        "id": "c7",
+        "orden_id": "op_mesas",
+        "materia_prima_id": "mad",
+        "fecha": "2026-09-20",
+        "documento": "SALIDA-2",
+        "cantidad": 150,
+        "unidad": "unidad",
+        "costo_unitario": null,
+        "nota": "Salida de las unidades restantes al final de la compra 5"
+      },
+      {
+        "id": "c8",
+        "orden_id": "op_vitrinas",
+        "materia_prima_id": "met",
+        "fecha": "2026-09-20",
+        "documento": "SALIDA-2",
+        "cantidad": 170,
+        "unidad": "unidad",
+        "costo_unitario": null,
+        "nota": "Salida de las unidades restantes al final de la compra 5"
+      },
+      {
+        "id": "c9",
+        "orden_id": "op_mesas",
+        "materia_prima_id": "pla",
+        "fecha": "2026-09-20",
+        "documento": "SALIDA-2",
+        "cantidad": 60,
+        "unidad": "unidad",
+        "costo_unitario": null,
+        "nota": "Salida de las unidades restantes al final de la compra 5"
+      },
+      {
+        "id": "c10",
+        "orden_id": "op_vitrinas",
+        "materia_prima_id": "pla",
+        "fecha": "2026-09-20",
+        "documento": "SALIDA-2",
+        "cantidad": 40,
+        "unidad": "unidad",
+        "costo_unitario": null,
+        "nota": "Salida de las unidades restantes al final de la compra 5"
+      },
+      {
+        "id": "c11",
+        "orden_id": "op_vitrinas",
+        "materia_prima_id": "vid",
+        "fecha": "2026-09-20",
+        "documento": "SALIDA-2",
+        "cantidad": 360,
+        "unidad": "unidad",
+        "costo_unitario": null,
+        "nota": "Salida de las unidades restantes al final de la compra 5"
+      }
+    ],
+    "asignaciones_mo": [
+      {
+        "id": "am1",
+        "orden_id": "op_mesas",
+        "trabajador_id": "op_a",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-20",
+        "tipo_hora": "ordinaria",
+        "horas": 120,
+        "tarifa_hora": null
+      },
+      {
+        "id": "am2",
+        "orden_id": "op_vitrinas",
+        "trabajador_id": "op_a",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-20",
+        "tipo_hora": "ordinaria",
+        "horas": 70,
+        "tarifa_hora": null
+      },
+      {
+        "id": "am3",
+        "orden_id": "op_mesas",
+        "trabajador_id": "op_b",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-20",
+        "tipo_hora": "ordinaria",
+        "horas": 130,
+        "tarifa_hora": null
+      },
+      {
+        "id": "am4",
+        "orden_id": "op_vitrinas",
+        "trabajador_id": "op_b",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-20",
+        "tipo_hora": "ordinaria",
+        "horas": 50,
+        "tarifa_hora": null
+      },
+      {
+        "id": "am5",
+        "orden_id": "op_mesas",
+        "trabajador_id": "op_c",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-20",
+        "tipo_hora": "ordinaria",
+        "horas": 75,
+        "tarifa_hora": null
+      },
+      {
+        "id": "am6",
+        "orden_id": "op_vitrinas",
+        "trabajador_id": "op_c",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-20",
+        "tipo_hora": "ordinaria",
+        "horas": 125,
+        "tarifa_hora": null
+      },
+      {
+        "id": "am7",
+        "orden_id": "op_mesas",
+        "trabajador_id": "op_d",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-20",
+        "tipo_hora": "ordinaria",
+        "horas": 80,
+        "tarifa_hora": null
+      },
+      {
+        "id": "am8",
+        "orden_id": "op_vitrinas",
+        "trabajador_id": "op_d",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-20",
+        "tipo_hora": "ordinaria",
+        "horas": 125,
+        "tarifa_hora": null
+      },
+      {
+        "id": "am9",
+        "orden_id": "op_mesas",
+        "trabajador_id": "op_e",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-20",
+        "tipo_hora": "ordinaria",
+        "horas": 84,
+        "tarifa_hora": null
+      },
+      {
+        "id": "am10",
+        "orden_id": "op_vitrinas",
+        "trabajador_id": "op_e",
+        "periodo_id": "per_sep",
+        "fecha": "2026-09-20",
+        "tipo_hora": "ordinaria",
+        "horas": 96,
+        "tarifa_hora": null
+      }
+    ],
+    "otros_directos": [],
+    "hojas": [
+      {
+        "id": "h_mesas",
+        "orden_id": "op_mesas",
+        "numero": "HC-001",
+        "fecha_elaboracion": "2026-09-30",
+        "observaciones": "Orden de 100 mesas del cliente A.",
+        "estado": "borrador",
+        "margen_metodo": null,
+        "margen_pct": null,
+        "version": 1,
+        "congelada": null,
+        "historial": []
+      },
+      {
+        "id": "h_vitrinas",
+        "orden_id": "op_vitrinas",
+        "numero": "HC-002",
+        "fecha_elaboracion": "2026-09-30",
+        "observaciones": "Orden de 80 vitrinas del cliente B.",
+        "estado": "borrador",
+        "margen_metodo": null,
+        "margen_pct": null,
+        "version": 1,
+        "congelada": null,
+        "historial": []
+      }
+    ]
+  },
+  "cif": {
+    "categorias": [
+      {
+        "id": "cat_arriendo",
+        "nombre": "Arrendamiento de la fábrica",
+        "naturaleza": "cif",
+        "comportamiento": "fijo",
+        "base": null,
+        "activa": true
+      },
+      {
+        "id": "cat_alarma",
+        "nombre": "Alarma de la fábrica",
+        "naturaleza": "cif",
+        "comportamiento": "fijo",
+        "base": null,
+        "activa": true
+      },
+      {
+        "id": "cat_depreciacion",
+        "nombre": "Depreciación de maquinaria",
+        "naturaleza": "cif",
+        "comportamiento": "fijo",
+        "base": null,
+        "activa": true
+      },
+      {
+        "id": "cat_seguro",
+        "nombre": "Seguro de la fábrica",
+        "naturaleza": "cif",
+        "comportamiento": "fijo",
+        "base": null,
+        "activa": true
+      },
+      {
+        "id": "cat_software",
+        "nombre": "Software administrativo",
+        "naturaleza": "administracion",
+        "comportamiento": "fijo",
+        "base": null,
+        "activa": true,
+        "nota": "Gasto del período: NO entra al costo del producto."
+      },
+      {
+        "id": "cat_oficina",
+        "nombre": "Arrendamiento oficina administrativa",
+        "naturaleza": "administracion",
+        "comportamiento": "fijo",
+        "base": null,
+        "activa": true,
+        "nota": "Gasto del período: NO entra al costo del producto."
+      }
+    ],
+    "cif": [
+      {
+        "id": "cif1",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_arriendo",
+        "concepto": "Arrendamiento de la fábrica",
+        "monto": 7000000,
+        "documento": "",
+        "presupuestado": false
+      },
+      {
+        "id": "cif2",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_alarma",
+        "concepto": "Alarma de la fábrica",
+        "monto": 120000,
+        "documento": "",
+        "presupuestado": false
+      },
+      {
+        "id": "cif3",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_depreciacion",
+        "concepto": "Depreciación de maquinaria",
+        "monto": 950000,
+        "documento": "",
+        "presupuestado": false
+      },
+      {
+        "id": "cif4",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_seguro",
+        "concepto": "Seguro de la fábrica",
+        "monto": 750000,
+        "documento": "",
+        "presupuestado": false
+      },
+      {
+        "id": "gas1",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_software",
+        "concepto": "Software administrativo",
+        "monto": 200000,
+        "documento": "",
+        "presupuestado": false
+      },
+      {
+        "id": "gas2",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_oficina",
+        "concepto": "Arrendamiento oficina administrativa",
+        "monto": 3500000,
+        "documento": "",
+        "presupuestado": false
+      }
+    ]
+  },
+  "comercial": {
+    "clientes": [
+      {
+        "id": "cli_a",
+        "nombre": "Cliente A",
+        "activo": true
+      },
+      {
+        "id": "cli_b",
+        "nombre": "Cliente B",
+        "activo": true
+      }
+    ],
+    "ventas": [],
+    "gastos": [],
+    "supuestos_equilibrio": []
+  }
+}

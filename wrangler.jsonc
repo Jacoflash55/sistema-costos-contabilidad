@@ -7,13 +7,25 @@
   desconocida sirva el index en vez de dar 404. En la practica la app usa
   HashRouter y el servidor solo ve "/", pero queda por si alguna vez se pasa a
   rutas de verdad.
+
+  ---------------------------------------------------------------------
+  SIN SECRETOS Y SIN NADA QUE SE COBRE
+
+  Aca NO hay `vars`, ni `secrets`, ni bindings a KV, D1, R2, colas ni Workers
+  AI. Es un sitio estatico puro: el navegador pide archivos y nada mas. No hay
+  ninguna API key en este repositorio, y la app no hace una sola peticion a
+  internet en tiempo de ejecucion —los datos viven en el localStorage del
+  navegador—.
+
+  `observability` quedo APAGADO a proposito. Sirve para ver los logs del
+  script del Worker, y aca el script nunca corre: todas las peticiones las
+  resuelve el servidor de archivos estaticos. Encenderlo no costaria plata en
+  el plan Free (tambien tiene tope duro), pero no registraria nada util.
+  Para prenderlo cuando haga falta depurar algo: "observability": { "enabled": true }.
 */
 {
   "name": "sistema-costos",
   "compatibility_date": "2026-10-01",
-  "observability": {
-    "enabled": true
-  },
   "assets": {
     // Tiene que coincidir con el outDir de Vite.
     "directory": "./dist",

@@ -71,15 +71,88 @@ export type BaseTasaCIF =
 export type MetodoMargen = 'sobre_costo' | 'sobre_precio'
 
 /** Los recargos de nomina, como FACTOR sobre el valor de la hora ordinaria. */
+/**
+ * Los siete recargos, como FACTOR sobre el valor de la hora ordinaria.
+ *
+ * Hay dos clases y la diferencia es lo que mas se equivoca:
+ *
+ *   COMPLETO   la hora es adicional a la jornada y se paga entera por ese
+ *              numero. Extra diurna 1.25 = la hora se paga al 125%.
+ *   ADICIONAL  la hora YA se pago como ordinaria y esto es solo el recargo
+ *              que se le suma encima. Recargo nocturno 0.35 = +35%.
+ *
+ * El motor multiplica horas x valor_hora x factor en los dos casos: la
+ * diferencia vive en como se registran las horas, no en la formula. Una hora
+ * dominical de un trabajador por hora se anota dos veces (como ordinaria para
+ * pagar la hora, y como dominical para pagar el recargo).
+ *
+ * ACADEMICO: los numeros son editables desde Configuracion.
+ */
 export interface RecargosNomina {
-  /** Hora extra diurna: +25% => 1.25 */
+  /** COMPLETO. Hora extra diurna: se paga al 125% => 1.25 */
   extra_diurna: number
-  /** Hora extra nocturna: +75% => 1.75 */
+  /** COMPLETO. Hora extra nocturna: se paga al 175% => 1.75 */
   extra_nocturna: number
-  /** Recargo nocturno. La hora ya se pago como ordinaria: esto es el adicional, +35% => 0.35 */
+  /** ADICIONAL. Recargo nocturno sobre la hora ordinaria: +35% => 0.35 */
   recargo_nocturno: number
-  /** Dominical o festivo: +75% => 0.75 */
+  /** ADICIONAL. Dominical o festivo sobre la hora ordinaria: +90% => 0.90 */
   dominical: number
+  /** ADICIONAL. Recargo nocturno en dominical o festivo: +125% => 1.25 */
+  recargo_nocturno_dominical: number
+  /** COMPLETO. Hora extra diurna en dominical o festivo: se paga al 215% => 2.15 */
+  extra_diurna_dominical: number
+  /** COMPLETO. Hora extra nocturna en dominical o festivo: se paga al 265% => 2.65 */
+  extra_nocturna_dominical: number
+}
+
+/** Clase de riesgo de la ARL. Decide el porcentaje que paga el empleador. */
+export type ClaseRiesgoARL = 'I' | 'II' | 'III' | 'IV' | 'V'
+
+/** En que bloque del costo laboral cae un aporte del empleador. */
+export type GrupoAporte = 'prestaciones' | 'seguridad_social' | 'parafiscales'
+
+/**
+ * Una linea de lo que el empleador paga POR ENCIMA del salario.
+ *
+ * Reemplaza al viejo `factor_prestacional` de un solo numero: ahora el factor
+ * se DERIVA de estas lineas, asi que se puede ver de donde sale cada punto
+ * porcentual y cambiarlo uno por uno.
+ *
+ * ACADEMICO: los porcentajes son de ejercicio y se editan desde Configuracion.
+ * No hay topes, ni IBC minimo, ni reglas de salario integral.
+ */
+export interface AporteEmpleador {
+  id: string
+  grupo: GrupoAporte
+  nombre: string
+  /** Porcentaje sobre el IBC (8.33 = 8,33%). */
+  pct: number
+  /** Si la linea entra al calculo. Es lo unico que decide. */
+  activo: boolean
+  /**
+   * Marca que esta linea esta sujeta a la EXONERACION DEL ART. 114-1 (salud
+   * del empleador, SENA e ICBF).
+   *
+   * No decide por si sola: lo que decide es `activo`. Sirve para que la
+   * pantalla explique por que se puede apagar, y para el boton que apaga las
+   * tres de un golpe. Un trabajador que gane 10 SMLMV o mas SI las causa, y
+   * eso se resuelve con un override en su ficha.
+   */
+  cuando_corresponda: boolean
+  /**
+   * Si esta linea se calcula sobre el IBC MAS el auxilio de transporte.
+   *
+   * Es la segunda base de la nomina colombiana y la unica excepcion que el
+   * sistema modela: cesantias, prima e intereses sobre cesantias se liquidan
+   * sobre salario + auxilio de transporte, mientras que pension, salud, ARL,
+   * parafiscales y vacaciones van solo sobre el salario.
+   *
+   * Sin el campo (false) la linea usa el IBC salarial, que es lo que hacia el
+   * sistema antes de que existiera esta marca.
+   *
+   * ACADEMICO y editable, como todo lo demas.
+   */
+  base_con_auxilio?: boolean
 }
 
 /**
@@ -91,17 +164,32 @@ export interface ParametrosCalculo {
   horas_mes: number
   recargos: RecargosNomina
   /**
-   * Factor prestacional: cuanto cuesta de verdad una hora de mano de obra
-   * frente al salario puro, una vez sumadas prestaciones, seguridad social y
-   * parafiscales.
+   * Lo que el empleador paga por encima del salario, linea por linea.
    *
-   * Es el INCREMENTO, no el multiplicador: el motor hace
-   * `costo = devengado x (1 + factor)`, asi que 0.52 significa que la hora
-   * cuesta un 52% mas que el salario puro. Poner 1.52 la encareceria un 152%.
-   *
-   * ACADEMICO: es un numero editable, no una tabla legal.
+   * El factor prestacional YA NO SE ESCRIBE A MANO: se deriva de aqui con
+   * `factorPrestacionalDe(trabajador, parametros)`, sumando las lineas que
+   * apliquen a esa persona mas el porcentaje de su clase de ARL.
    */
-  factor_prestacional: number
+  aportes_empleador: AporteEmpleador[]
+  /** El porcentaje de ARL de cada clase de riesgo. Editable. */
+  arl_clases: Record<ClaseRiesgoARL, number>
+  /**
+   * Si un trabajador MENSUAL con menos horas ordinarias de las esperadas
+   * cobra proporcional.
+   *
+   * Por defecto false: el salario mensual es el salario, y lo unico que lo
+   * baja son las ausencias registradas. En true, las horas que falten para
+   * completar `horas_mes` se tratan igual que una ausencia. Solo prorratea si
+   * de verdad hay horas registradas: a alguien sin tarjeta de tiempo no se le
+   * deja el sueldo en cero por descuido.
+   */
+  prorratear_ordinarias?: boolean
+  /**
+   * LEGADO. El factor de un solo numero que se usaba antes de desglosar los
+   * aportes. Solo se mira cuando `aportes_empleador` viene vacio o no existe,
+   * para que una configuracion vieja guardada en el navegador siga calculando.
+   */
+  factor_prestacional?: number
   /**
    * Si la mano de obra directa entra a la hoja de costos con el factor
    * prestacional aplicado, o sea al COSTO-EMPRESA de la hora.
@@ -114,8 +202,53 @@ export interface ParametrosCalculo {
    * Sin el campo (una config vieja) se asume true.
    */
   mod_con_factor_prestacional?: boolean
+  /**
+   * CON QUE TARIFA SE COSTEA UNA HORA IMPUTADA A UNA ORDEN.
+   *
+   * - 'valor_hora' (por defecto): salario / horas_mes, cargado con el factor
+   *   prestacional de esa persona. Es rapido y no depende de que la nomina
+   *   del periodo este liquidada, pero deja por fuera todo lo que no es
+   *   salario: el auxilio de transporte, una bonificacion, un recargo que ya
+   *   se pago. Esos pesos existen y hay que ponerlos en algun lado.
+   *
+   * - 'liquidacion': la TARIFA REAL DEL PERIODO, que es
+   *
+   *       costo_empresa de la persona en el periodo / horas de la jornada
+   *
+   *   o sea lo que de verdad costo una hora de esa persona ese mes, auxilio y
+   *   prestaciones incluidos. Es el metodo que piden casi todos los talleres
+   *   («el costo total de la nomina se reparte entre las horas disponibles»),
+   *   y tiene una consecuencia que es justamente lo que se quiere ver: las
+   *   horas que NO se imputaron a ninguna orden quedan sin absorber, y eso es
+   *   el costo del tiempo ocioso.
+   *
+   *   En este modo la tarifa YA TRAE las prestaciones, asi que
+   *   `mod_con_factor_prestacional` no se vuelve a aplicar: hacerlo cobraria
+   *   el factor dos veces.
+   *
+   * Sin el campo (una config vieja) se asume 'valor_hora'.
+   */
+  tarifa_mod_desde?: 'valor_hora' | 'liquidacion'
   metodo_inventario: MetodoInventario
   base_cif: BaseTasaCIF
+  /**
+   * LA CAPACIDAD NORMAL del periodo, en la unidad de `base_cif`.
+   *
+   * En 0 o sin el campo (por defecto) la tasa de CIF se calcula sobre la
+   * actividad REAL del mes: todo lo incurrido se reparte y la variacion da
+   * cero.
+   *
+   * Con un numero, la tasa se calcula sobre ESE nivel —es la TASA
+   * PREDETERMINADA de siempre— y entonces aparece la variacion: si la planta
+   * trabajo menos que su capacidad normal, parte de los CIF no la absorbe
+   * ninguna orden y queda SUBAPLICADA. Eso no es un error del sistema: es el
+   * costo de la capacidad que no se uso, y casi todos los talleres lo piden.
+   *
+   * OJO CON LA UNIDAD: va en la unidad de la base elegida. Con la base en
+   * horas de MOD son horas (5 operarios x 210 = 1.050); con la base en
+   * unidades son unidades. Si se cambia la base hay que volver a escribirla.
+   */
+  nivel_actividad_normal?: number
   /**
    * Con que CIF se calcula la tasa del periodo.
    *
@@ -203,6 +336,29 @@ export interface Trabajador {
   /** Si recibe auxilio de transporte. El monto sale del catalogo de conceptos. */
   tiene_auxilio_transporte: boolean
   tipo_contrato: TipoContrato
+  /** Clase de riesgo de la ARL. Decide el porcentaje de ARL de esta persona. */
+  clase_riesgo: ClaseRiesgoARL
+  /**
+   * Prestaciones distintas a las globales, SOLO para esta persona.
+   *
+   * La clave es el id de la linea de `aportes_empleador`. Lo que no este aqui
+   * se hereda de la configuracion, asi que cambiar un porcentaje global
+   * recalcula a todos los que heredan y deja quietos a los que tienen
+   * override. Sirve para el que gana 10 SMLMV o mas y si causa salud, SENA e
+   * ICBF aunque la empresa este exonerada.
+   */
+  aportes_override?: Record<string, { pct?: number; activo?: boolean }>
+  /**
+   * Si su costo es un COSTO FIJO del periodo, para el analisis de punto de
+   * equilibrio.
+   *
+   * Sin el campo se deriva de la modalidad: 'mensual' es fija (el sueldo se
+   * paga igual se produzcan 1 o 1.000 unidades) y 'por_hora' es variable (si
+   * no hay produccion no hay horas). Se puede forzar: un trabajador por hora
+   * con jornada garantizada se comporta como fijo, y un mensual contratado
+   * solo para la temporada alta, como variable.
+   */
+  mano_obra_fija?: boolean
   fecha_ingreso: Fecha
   activo: boolean
   nota?: string
@@ -226,6 +382,9 @@ export type TipoHora =
   | 'extra_nocturna'
   | 'recargo_nocturno'
   | 'dominical'
+  | 'recargo_nocturno_dominical'
+  | 'extra_diurna_dominical'
+  | 'extra_nocturna_dominical'
 
 /**
  * La tarjeta de tiempo: cuantas horas de cada clase trabajo una persona.
@@ -339,6 +498,23 @@ export interface LineaHoras {
 }
 
 /**
+ * Un aporte del empleador ya resuelto a plata para una persona y un periodo.
+ *
+ * `origen` dice si el porcentaje salio de la configuracion global o del
+ * override de esa persona, para que la liquidacion lo pueda mostrar.
+ */
+export interface LineaAporte {
+  id: string
+  grupo: GrupoAporte
+  nombre: string
+  pct: number
+  /** El IBC sobre el que se calculo. */
+  base: number
+  monto: number
+  origen: 'global' | 'trabajador'
+}
+
+/**
  * El resultado de liquidar a una persona en un periodo. Es un DERIVADO: lo
  * calcula el motor a partir de trabajador + horas + novedades + conceptos +
  * parametros.
@@ -374,20 +550,48 @@ export interface Liquidacion {
   bonificaciones: number
   /** salario_base_periodo + extras_y_recargos + bonificaciones */
   total_devengado: number
-  /** La base de los conceptos que se calculan sobre lo prestacional. */
+  /**
+   * EL IBC: la base sobre la que se calculan los aportes del empleador.
+   *
+   * Es el DEVENGADO SALARIAL: el salario del periodo, las extras y los
+   * recargos, mas los devengados marcados como `afecta_base_prestacional`. El
+   * auxilio de transporte y las bonificaciones no salariales NO entran, asi
+   * que el IBC puede ser menor que el total devengado.
+   *
+   * ACADEMICO: no hay tope de 25 SMLMV, ni IBC minimo, ni reglas de salario
+   * integral.
+   */
   base_prestacional: number
+  /**
+   * El auxilio de transporte del periodo, aparte.
+   *
+   * Es la SEGUNDA BASE: no causa pension, salud, ARL ni parafiscales, pero si
+   * entra a cesantias, prima e intereses. Las lineas de aporte marcadas
+   * `base_con_auxilio` se calculan sobre `base_prestacional + esto`.
+   */
+  auxilio_transporte: number
   lineas: LineaLiquidacion[]
   total_deducciones: number
   /** Lo que recibe la persona. Nunca negativo. */
   neto_pagar: number
-  /** Lo que le cuesta a la empresa: total_devengado x (1 + factor_prestacional). */
-  costo_empresa: number
-  /** La parte del costo-empresa que es carga prestacional: costo_empresa - total_devengado. */
+  /** El desglose de lo que paga el empleador por encima del salario. */
+  aportes: LineaAporte[]
+  /** Suma de `aportes`. Es la carga prestacional de este periodo. */
   carga_prestacional: number
-  /** valor_hora x (1 + factor_prestacional). Es la tarifa con la que se costea una orden. */
+  /** Lo que le cuesta a la empresa: total_devengado + carga_prestacional. */
+  costo_empresa: number
+  /** El factor derivado de esta persona: suma de sus lineas activas mas su ARL. */
+  factor_prestacional: number
+  /** valor_hora x (1 + factor de esta persona). Es la tarifa con la que se costea una orden. */
   costo_hora_cargado: number
   /** Horas pagadas que se pueden imputar a una orden (todas menos las ausencias). */
   horas_pagadas: number
+  /** Las horas de la jornada del periodo. Solo informativo para un mensual. */
+  horas_esperadas: number
+  /** Horas que bajaron el salario de un mensual: ausencias, mas el faltante si se prorratea. */
+  horas_descontadas: number
+  /** La plata que se le descontó al salario mensual por esas horas. */
+  descuento_por_horas: number
   alertas: string[]
 }
 
@@ -878,6 +1082,17 @@ export interface TasaCIF {
   desde: 'presupuestado' | 'real'
   /** Unidades, horas o pesos de la base, sumados sobre las ordenes del periodo. */
   nivel_actividad: number
+  /**
+   * ENTRE QUE SE DIVIDIO DE VERDAD.
+   *
+   * Normalmente es `nivel_actividad`. Pero si la configuracion fijo una
+   * CAPACIDAD NORMAL (`nivel_actividad_normal`), se divide entre esa, y ahi
+   * esta la gracia: la tasa deja de depender de que tan ocupada estuvo la
+   * planta este mes, y lo que no se alcanza a repartir queda SUBAPLICADO.
+   */
+  nivel_divisor: number
+  /** true cuando el divisor fue la capacidad normal y no la actividad real. */
+  desde_capacidad: boolean
   tasa: number
   /** false cuando el nivel de actividad es 0: no hay tasa posible y nada se reparte. */
   valida: boolean
@@ -1118,6 +1333,37 @@ export interface Gasto {
   nota?: string
 }
 
+/**
+ * UN DATO QUE LA EMPRESA PROVEE A MANO para el analisis de punto de equilibrio.
+ *
+ * El sistema DERIVA todo: los costos fijos del periodo, el costo variable
+ * unitario de cada producto y su precio. Pero el equilibrio es una herramienta
+ * de DECISION, y la empresa tiene que poder decir «corramos el analisis con
+ * estos numeros»: un precio que todavia no esta en ninguna hoja, un arriendo
+ * que sube el mes que viene, la mezcla de ventas que se espera y no la que ya
+ * paso. Esta fila guarda ESO, sin tocar ni un dato real.
+ *
+ * Cada campo en null significa «usá el derivado». Solo lo que tenga numero
+ * reemplaza al calculo, y la pantalla siempre dice cual de los dos esta
+ * usando.
+ *
+ * Con `producto_id: null` la fila es el supuesto DEL PERIODO (los costos
+ * fijos). Con un id de producto, es el supuesto de ese producto.
+ */
+export interface SupuestoEquilibrio {
+  id: ID
+  periodo: Mes
+  /** null = la fila del periodo. Con id = la fila de ese producto. */
+  producto_id: ID | null
+  /** Solo se mira en la fila del periodo. */
+  costos_fijos: number | null
+  precio_venta: number | null
+  costo_variable_unitario: number | null
+  /** Unidades de este producto en una canasta de ventas, para la mezcla. */
+  mezcla_unidades: number | null
+  nota?: string
+}
+
 // =====================================================================
 // 9. LOS DATOS CRUDOS, AGRUPADOS POR MODULO
 // =====================================================================
@@ -1162,6 +1408,8 @@ export interface DatosComercial {
   clientes: Cliente[]
   ventas: Venta[]
   gastos: Gasto[]
+  /** Los numeros que la empresa pone a mano en el punto de equilibrio. */
+  supuestos_equilibrio: SupuestoEquilibrio[]
 }
 
 /** Todo lo crudo junto. Es lo que entra a `calcularTodo` y lo que se respalda. */

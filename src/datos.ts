@@ -22,6 +22,8 @@ import nominaJson from '../data/nomina.json'
 import produccionJson from '../data/produccion.json'
 
 import { calcularCIF, periodoDeOrden } from './lib/cif'
+import { escenarioEquilibrio } from './lib/equilibrio'
+import type { EscenarioEquilibrio } from './lib/equilibrio'
 import { armarHoja } from './lib/hoja'
 import { construirTarjetas, costoReceta, materialesDeOrdenes, metodoEfectivo } from './lib/kardex'
 import {
@@ -31,6 +33,7 @@ import {
   manoObraIndirectaDelPeriodo,
   manoObraPorOrden,
   resumenNomina,
+  tarifaPorLiquidacion,
 } from './lib/nomina'
 import type {
   AlertaKardex,
@@ -304,6 +307,8 @@ export function calcularTodo(datos: DatosCrudos, fechaHoy: string = hoy()) {
     produccion.asignaciones_mo,
     nomina.trabajadores,
     config.parametros,
+    // la tarifa real del periodo, por si la configuracion costea la MOD con ella
+    tarifaPorLiquidacion(liquidaciones),
   )
 
   /** Horas pagadas vs. horas imputadas de los directos: el tiempo ocioso, medido. */
@@ -383,6 +388,39 @@ export function calcularTodo(datos: DatosCrudos, fechaHoy: string = hoy()) {
   /** En que periodo de CIF cae cada orden. Se deriva de su fecha de cierre. */
   const periodoPorOrden: Record<ID, Mes> = {}
   for (const o of produccion.ordenes) periodoPorOrden[o.id] = periodoDeOrden(o)
+
+  /*
+    EL PUNTO DE EQUILIBRIO. Es el ultimo eslabon y no calcula ningun costo
+    nuevo: toma los CIF del periodo, las liquidaciones de nomina y el costo de
+    las recetas —todo ya resuelto arriba— y solo los CLASIFICA en fijos y
+    variables.
+
+    Se corre para todos los periodos de una vez, igual que la nomina: con el
+    volumen de una pequena empresa es barato y la pantalla puede saltar de mes
+    a mes sin recalcular. Y se le pasan los supuestos que la empresa escribio
+    a mano, que mandan sobre lo derivado campo por campo.
+  */
+  const escenariosEquilibrio: Record<Mes, EscenarioEquilibrio> = {}
+
+  for (const periodo of periodosCIF) {
+    escenariosEquilibrio[periodo] = escenarioEquilibrio(
+      {
+        periodo,
+        conceptos: cif.cif,
+        categorias: cif.categorias,
+        gastos: comercial.gastos,
+        trabajadores: nomina.trabajadores,
+        periodosNomina: nomina.periodos,
+        liquidaciones,
+        ordenes: produccion.ordenes,
+        productos: produccion.productos,
+        recetaPorProducto,
+        costosReceta: costosReceta,
+        hojasPorOrden,
+      },
+      comercial.supuestos_equilibrio ?? [],
+    )
+  }
 
   /** Cuantas filas hay de cada cosa. Para los encabezados y el estado del sistema. */
   const conteos = {
@@ -473,6 +511,14 @@ export function calcularTodo(datos: DatosCrudos, fechaHoy: string = hoy()) {
     hojas,
     hojasPorOrden,
     otrosPorOrden,
+
+    // --- punto de equilibrio ---
+    /**
+     * Por periodo: los costos fijos clasificados linea por linea, el costo
+     * variable unitario de cada producto y los supuestos que la empresa puso
+     * a mano encima. Lo que leen las formulas de `lib/equilibrio.ts`.
+     */
+    escenariosEquilibrio,
   }
 }
 

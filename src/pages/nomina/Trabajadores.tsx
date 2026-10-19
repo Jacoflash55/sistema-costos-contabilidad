@@ -18,15 +18,17 @@ import {
 } from '../../components/ui'
 import type { Columna, Tono } from '../../components/ui'
 import { useEstado } from '../../contexto'
-import { cop, copPreciso } from '../../lib/formato'
-import { ETIQUETA_CLASIFICACION, costoHoraCargado, valorHora } from '../../lib/nomina'
+import { cop, copPreciso, pct } from '../../lib/formato'
+import { ETIQUETA_CLASIFICACION, costoHoraCargado, factorPrestacionalDe, valorHora } from '../../lib/nomina'
 import type {
+  ClaseRiesgoARL,
   ClasificacionMO,
   ID,
   ModalidadRemuneracion,
   TipoContrato,
   Trabajador,
 } from '../../lib/tipos'
+import { PanelPrestaciones } from './PanelPrestaciones'
 
 const CLASIFICACIONES: ReadonlyArray<{ valor: ClasificacionMO; texto: string }> = [
   { valor: 'directa', texto: 'Mano de obra DIRECTA (va a la hoja de costos)' },
@@ -41,6 +43,8 @@ const TONO_CLASIFICACION: Record<ClasificacionMO, Tono> = {
   administracion: 'neutro',
   ventas: 'neutro',
 }
+
+type ComportamientoMO = 'auto' | 'fija' | 'variable'
 
 const MODALIDADES: ReadonlyArray<{ valor: ModalidadRemuneracion; texto: string }> = [
   { valor: 'mensual', texto: 'Mensual fijo' },
@@ -71,10 +75,19 @@ const VACIO: Omit<Trabajador, 'id'> = {
   tarifa_hora: 0,
   tiene_auxilio_transporte: true,
   tipo_contrato: 'termino_indefinido',
+  clase_riesgo: 'II',
   fecha_ingreso: hoyISO(),
   activo: true,
   nota: '',
 }
+
+const CLASES_ARL: ReadonlyArray<{ valor: ClaseRiesgoARL; texto: string }> = [
+  { valor: 'I', texto: 'Clase I — riesgo mínimo' },
+  { valor: 'II', texto: 'Clase II — riesgo bajo' },
+  { valor: 'III', texto: 'Clase III — riesgo medio' },
+  { valor: 'IV', texto: 'Clase IV — riesgo alto' },
+  { valor: 'V', texto: 'Clase V — riesgo máximo' },
+]
 
 export function Trabajadores() {
   const { nomina, config, crearTrabajador, actualizarTrabajador, borrarTrabajador } = useEstado()
@@ -133,8 +146,11 @@ export function Trabajadores() {
     setError(motivo ? `No se pudo borrar a ${t.nombre}: ${motivo}` : null)
   }
 
-  /** El trabajador del borrador, para ver el valor hora mientras se escribe. */
-  const vhBorrador = valorHora({ ...borrador, id: 'borrador' }, parametros)
+  /** El trabajador del borrador, para ver el valor hora y el factor mientras se escribe. */
+  const enBorrador: Trabajador = { ...borrador, id: 'borrador' }
+  const vhBorrador = valorHora(enBorrador, parametros)
+  const factorBorrador = factorPrestacionalDe(enBorrador, parametros)
+  const arlPct = parametros.arl_clases?.[borrador.clase_riesgo] ?? 0
 
   const columnas: Columna<Trabajador>[] = [
     {
@@ -390,13 +406,49 @@ export function Trabajadores() {
               </Campo>
             )}
 
+            <Campo etiqueta="Clase de riesgo (ARL)" ayuda={`Aporta ${pct(arlPct, 3)} sobre el IBC.`}>
+              {(id) => (
+                <Selector<ClaseRiesgoARL>
+                  id={id}
+                  valor={borrador.clase_riesgo}
+                  onChange={(v) => set('clase_riesgo', v)}
+                  opciones={CLASES_ARL}
+                />
+              )}
+            </Campo>
+
+            <Campo
+              etiqueta="Comportamiento del costo"
+              ayuda="Solo para el punto de equilibrio. No cambia la liquidación."
+            >
+              {(id) => (
+                <Selector<ComportamientoMO>
+                  id={id}
+                  valor={
+                    borrador.mano_obra_fija == null ? 'auto' : borrador.mano_obra_fija ? 'fija' : 'variable'
+                  }
+                  onChange={(v) =>
+                    set('mano_obra_fija', v === 'auto' ? undefined : v === 'fija')
+                  }
+                  opciones={[
+                    {
+                      valor: 'auto',
+                      texto: `Según la modalidad (${borrador.modalidad === 'mensual' ? 'fijo' : 'variable'})`,
+                    },
+                    { valor: 'fija', texto: 'Costo fijo del período' },
+                    { valor: 'variable', texto: 'Costo variable' },
+                  ]}
+                />
+              )}
+            </Campo>
+
             <div className="rounded-lg border border-borde bg-panel-alto p-3">
               <Cifra
                 etiqueta="Hora cargada"
-                valor={copPreciso(vhBorrador * (1 + parametros.factor_prestacional))}
+                valor={copPreciso(vhBorrador * (1 + factorBorrador))}
                 tamano="sm"
                 tono="acento"
-                pie={`Valor hora × ${parametros.factor_prestacional + 1} (factor prestacional)`}
+                pie={`Valor hora × ${(1 + factorBorrador).toLocaleString('es-CO', { maximumFractionDigits: 5 })} · factor ${pct(factorBorrador * 100, 3)}`}
               />
             </div>
 
@@ -404,6 +456,12 @@ export function Trabajadores() {
               {(id) => <InputTexto id={id} valor={borrador.nota ?? ''} onChange={(v) => set('nota', v)} />}
             </Campo>
           </Rejilla>
+
+          <PanelPrestaciones
+            borrador={borrador}
+            parametros={parametros}
+            onChange={(ov) => set('aportes_override', ov)}
+          />
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-4">

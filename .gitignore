@@ -5,3 +5,13 @@ dist/
 .vite/
 .wrangler/
 *.tsbuildinfo
+
+# Secretos. Hoy el proyecto NO usa ninguna variable de entorno —no hay API
+# keys, no hay backend, no sale una sola peticion a internet—, pero la regla
+# va igual: si algun dia se agrega un .env, que sea imposible subirlo por
+# accidente. El repositorio es publico.
+.env
+.env.*
+!.env.example
+*.key
+*.pem

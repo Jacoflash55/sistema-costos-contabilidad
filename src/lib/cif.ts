@@ -266,8 +266,25 @@ export function tasaDelPeriodo(
     nivel_actividad += n.valor
   }
 
-  const valida = nivel_actividad > 0
-  const tasaValor = valida ? divSegura(total_cif, nivel_actividad) : 0
+  /*
+    ENTRE QUE SE DIVIDE.
+
+    Por defecto, entre la actividad REAL del mes: lo que se reparte y lo que
+    se divide hablan de lo mismo, todo lo incurrido se absorbe y la variacion
+    da cero.
+
+    Si la configuracion fijo una CAPACIDAD NORMAL, se divide entre esa. La
+    tasa deja de depender de que tan ocupada estuvo la planta, que es
+    justamente lo que se busca: un mes flojo no encarece cada unidad. El
+    precio de eso es que los CIF de la capacidad ociosa no los absorbe nadie y
+    quedan SUBAPLICADOS, visibles en `variacion`.
+  */
+  const capacidad = parametros.nivel_actividad_normal ?? 0
+  const desde_capacidad = capacidad > 0
+  const nivel_divisor = desde_capacidad ? capacidad : nivel_actividad
+
+  const valida = nivel_divisor > 0 && nivel_actividad > 0
+  const tasaValor = valida ? divSegura(total_cif, nivel_divisor) : 0
 
   const porOrden: Record<ID, CIFOrden> = {}
   let cif_aplicado = 0
@@ -300,6 +317,8 @@ export function tasaDelPeriodo(
     total_cif,
     desde,
     nivel_actividad,
+    nivel_divisor,
+    desde_capacidad,
     tasa: tasaValor,
     valida,
     cif_incurrido: pozo.asignable_real,

@@ -14,9 +14,102 @@
       "extra_diurna": 1.25,
       "extra_nocturna": 1.75,
       "recargo_nocturno": 0.35,
-      "dominical": 0.75
+      "dominical": 0.9,
+      "recargo_nocturno_dominical": 1.25,
+      "extra_diurna_dominical": 2.15,
+      "extra_nocturna_dominical": 2.65
     },
-    "factor_prestacional": 0.52,
+    "aportes_empleador": [
+      {
+        "id": "cesantias",
+        "grupo": "prestaciones",
+        "nombre": "Cesantías",
+        "pct": 8.33,
+        "activo": true,
+        "cuando_corresponda": false,
+        "base_con_auxilio": true
+      },
+      {
+        "id": "prima",
+        "grupo": "prestaciones",
+        "nombre": "Prima de servicios",
+        "pct": 8.33,
+        "activo": true,
+        "cuando_corresponda": false,
+        "base_con_auxilio": true
+      },
+      {
+        "id": "intereses_cesantias",
+        "grupo": "prestaciones",
+        "nombre": "Intereses a las cesantías",
+        "pct": 1,
+        "activo": true,
+        "cuando_corresponda": false,
+        "base_con_auxilio": true
+      },
+      {
+        "id": "vacaciones",
+        "grupo": "prestaciones",
+        "nombre": "Vacaciones",
+        "pct": 4.17,
+        "activo": true,
+        "cuando_corresponda": false,
+        "base_con_auxilio": false
+      },
+      {
+        "id": "pension_empleador",
+        "grupo": "seguridad_social",
+        "nombre": "Pensión (empleador)",
+        "pct": 12,
+        "activo": true,
+        "cuando_corresponda": false,
+        "base_con_auxilio": false
+      },
+      {
+        "id": "salud_empleador",
+        "grupo": "seguridad_social",
+        "nombre": "Salud (empleador)",
+        "pct": 8.5,
+        "activo": true,
+        "cuando_corresponda": true,
+        "base_con_auxilio": false
+      },
+      {
+        "id": "caja",
+        "grupo": "parafiscales",
+        "nombre": "Caja de compensación",
+        "pct": 4,
+        "activo": true,
+        "cuando_corresponda": false,
+        "base_con_auxilio": false
+      },
+      {
+        "id": "sena",
+        "grupo": "parafiscales",
+        "nombre": "SENA",
+        "pct": 2,
+        "activo": true,
+        "cuando_corresponda": true,
+        "base_con_auxilio": false
+      },
+      {
+        "id": "icbf",
+        "grupo": "parafiscales",
+        "nombre": "ICBF",
+        "pct": 3,
+        "activo": true,
+        "cuando_corresponda": true,
+        "base_con_auxilio": false
+      }
+    ],
+    "arl_clases": {
+      "I": 0.522,
+      "II": 1.044,
+      "III": 2.436,
+      "IV": 4.35,
+      "V": 6.96
+    },
+    "prorratear_ordinarias": false,
     "mod_con_factor_prestacional": true,
     "metodo_inventario": "promedio_ponderado",
     "base_cif": "unidades",

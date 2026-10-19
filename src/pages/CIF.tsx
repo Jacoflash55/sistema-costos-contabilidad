@@ -216,7 +216,7 @@ function Conceptos() {
         <TituloSeccion
           nota={
             tasa
-              ? `tasa = CIF asignables ÷ nivel de actividad = ${cop(tasa.total_cif)} ÷ ${fmtCantidad(tasa.nivel_actividad)}`
+              ? `tasa = CIF asignables ÷ ${tasa.desde_capacidad ? 'capacidad normal' : 'nivel de actividad'} = ${cop(tasa.total_cif)} ÷ ${fmtCantidad(tasa.nivel_divisor)}`
               : 'Registrá el primer concepto para ver la tasa.'
           }
           acciones={
@@ -252,7 +252,11 @@ function Conceptos() {
                 etiqueta="Nivel de actividad"
                 valor={`${fmtCantidad(tasa.nivel_actividad)} ${UNIDAD_BASE[tasa.base]}`}
                 tamano="sm"
-                pie={`${tasa.ordenes.length} orden(es) en el período`}
+                pie={
+                  tasa.desde_capacidad
+                    ? `La tasa divide entre ${fmtCantidad(tasa.nivel_divisor, 0)} de capacidad normal, no entre esto`
+                    : `${tasa.ordenes.length} orden(es) en el período`
+                }
               />
               <Cifra
                 etiqueta="Gasto del período"
@@ -308,13 +312,26 @@ function Conceptos() {
                 />
               </Rejilla>
               <p className="mt-3 text-xs text-tenue">
-                {tasa.desde === 'real' ? (
+                {tasa.desde_capacidad ? (
+                  <>
+                    <strong>Tasa predeterminada sobre la capacidad normal:</strong> la tasa se calculó
+                    dividiendo entre{' '}
+                    <strong>
+                      {fmtCantidad(tasa.nivel_divisor, 0)} {UNIDAD_BASE[tasa.base]}
+                    </strong>{' '}
+                    —la capacidad fijada en Configuración— y no entre las{' '}
+                    {fmtCantidad(tasa.nivel_actividad, 0)} que de verdad se trabajaron. Por eso un mes
+                    flojo no encarece cada unidad, y lo que la planta no alcanzó a absorber queda{' '}
+                    <strong>subaplicado</strong>: es el costo de la capacidad que no se usó, no un
+                    error del cálculo.
+                  </>
+                ) : tasa.desde === 'real' ? (
                   <>
                     <strong>Modelo simplificado:</strong> la tasa sale de los CIF reales del mismo
                     período, así que lo aplicado cuadra con lo incurrido y la variación da cero por
                     construcción. Para ver una variación de verdad hay que registrar CIF{' '}
-                    <strong>presupuestados</strong> y poner la tasa en modo presupuestado, en
-                    Configuración.
+                    <strong>presupuestados</strong> y poner la tasa en modo presupuestado, o fijar una
+                    capacidad normal — las dos cosas se cambian en Configuración.
                   </>
                 ) : (
                   <>

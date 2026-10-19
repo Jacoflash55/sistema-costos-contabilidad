@@ -19,12 +19,14 @@ import type {
   ID,
   ItemReceta,
   MateriaPrima,
+  Mes,
   MovimientoKardex,
   Novedad,
   OrdenProduccion,
   OtroCostoDirecto,
   PeriodoNomina,
   Producto,
+  SupuestoEquilibrio,
   TipoHoraRegistro,
   Trabajador,
 } from './lib/tipos'
@@ -126,6 +128,23 @@ export interface Estado {
   crearCliente: (c: Omit<Cliente, 'id'>) => ID
   actualizarCliente: (id: ID, parcial: Partial<Cliente>) => void
   borrarCliente: (id: ID) => Resultado
+
+  // ---------- punto de equilibrio ----------
+  /**
+   * Fija (o borra) un supuesto a mano del analisis de equilibrio.
+   *
+   * `productoId` en null es la fila DEL PERIODO, la de los costos fijos. Un
+   * campo en null vuelve a lo derivado, y cuando la fila se queda sin ningun
+   * numero puesto a mano se borra sola: asi no quedan filas fantasma que
+   * digan «manual» sin cambiar nada.
+   */
+  fijarSupuestoEquilibrio: (
+    periodo: Mes,
+    productoId: ID | null,
+    parcial: Partial<Pick<SupuestoEquilibrio, 'costos_fijos' | 'precio_venta' | 'costo_variable_unitario' | 'mezcla_unidades'>>,
+  ) => void
+  /** Borra todos los supuestos de un periodo: vuelve a lo que el sistema deriva. */
+  limpiarSupuestosEquilibrio: (periodo: Mes) => void
 
   // ---------- hojas de costos ----------
   /** Crea la hoja de una orden que todavia no tiene. Devuelve el id, o el de la que ya existia. */

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  CLASE_RECARGO,
+  TIPOS_HORA,
+  TIPOS_HORA_REGISTRO,
   cuadreHorasDirectas,
   gastosDeNominaDelPeriodo,
   liquidar,
@@ -10,10 +13,12 @@ import {
   recargoDe,
   resumenNomina,
   salarioBasePeriodo,
+  tarifaPorLiquidacion,
   usaFactorEnMOD,
   valorHora,
 } from '../src/lib/nomina'
 import type {
+  AporteEmpleador,
   AsignacionMO,
   ConceptoRemuneracion,
   Novedad,
@@ -38,15 +43,72 @@ const PARAMETROS: ParametrosCalculo = {
     extra_diurna: 1.25,
     extra_nocturna: 1.75,
     recargo_nocturno: 0.35,
-    dominical: 0.75,
+    dominical: 0.9,
+    recargo_nocturno_dominical: 1.25,
+    extra_diurna_dominical: 2.15,
+    extra_nocturna_dominical: 2.65,
   },
-  factor_prestacional: 0.5,
+  /*
+    Una sola linea del 50% para que todas las cuentas de estos tests queden
+    redondas. El desglose real (cesantias, prima, salud...) se prueba aparte,
+    en el bloque «prestaciones desglosadas».
+  */
+  aportes_empleador: [
+    {
+      id: 'todo',
+      grupo: 'prestaciones',
+      nombre: 'Carga prestacional',
+      pct: 50,
+      activo: true,
+      cuando_corresponda: false,
+    },
+  ],
+  arl_clases: { I: 0, II: 0, III: 0, IV: 0, V: 0 },
   mod_con_factor_prestacional: true,
   metodo_inventario: 'promedio_ponderado',
   base_cif: 'unidades',
   metodo_margen: 'sobre_costo',
   margen_por_defecto_pct: 30,
   redondeo_precio_multiplo: 100,
+}
+
+/** Un registro de horas con todo en cero menos lo que se le pase. */
+function horasVacias(p: Partial<Record<TipoHoraRegistro, number>> = {}): Record<TipoHoraRegistro, number> {
+  const base = Object.fromEntries(TIPOS_HORA_REGISTRO.map((t) => [t, 0])) as Record<TipoHoraRegistro, number>
+  return { ...base, ...p }
+}
+
+/*
+  Los mismos aportes de la semilla, para probar el factor derivado de verdad:
+
+    prestaciones      8,33 + 8,33 + 1,00 + 4,17 = 21,83%
+    seguridad social  12 + 8,5                  = 20,50%
+    parafiscales      4 + 2 + 3                 =  9,00%
+                                                  ------
+    suma de las lineas                            51,33%
+    + ARL clase III                                2,436%
+                                                  ------
+    factor                                        53,766%
+*/
+const APORTES: AporteEmpleador[] = [
+  { id: 'cesantias', grupo: 'prestaciones', nombre: 'Cesantías', pct: 8.33, activo: true, cuando_corresponda: false },
+  { id: 'prima', grupo: 'prestaciones', nombre: 'Prima', pct: 8.33, activo: true, cuando_corresponda: false },
+  { id: 'intereses_cesantias', grupo: 'prestaciones', nombre: 'Intereses', pct: 1.0, activo: true, cuando_corresponda: false },
+  { id: 'vacaciones', grupo: 'prestaciones', nombre: 'Vacaciones', pct: 4.17, activo: true, cuando_corresponda: false },
+  { id: 'pension_empleador', grupo: 'seguridad_social', nombre: 'Pensión', pct: 12, activo: true, cuando_corresponda: false },
+  { id: 'salud_empleador', grupo: 'seguridad_social', nombre: 'Salud', pct: 8.5, activo: true, cuando_corresponda: true },
+  { id: 'caja', grupo: 'parafiscales', nombre: 'Caja', pct: 4, activo: true, cuando_corresponda: false },
+  { id: 'sena', grupo: 'parafiscales', nombre: 'SENA', pct: 2, activo: true, cuando_corresponda: true },
+  { id: 'icbf', grupo: 'parafiscales', nombre: 'ICBF', pct: 3, activo: true, cuando_corresponda: true },
+]
+
+const ARL = { I: 0.522, II: 1.044, III: 2.436, IV: 4.35, V: 6.96 }
+
+/** Parámetros con el desglose real de prestaciones. */
+const PARAMETROS_REALES: ParametrosCalculo = {
+  ...PARAMETROS,
+  aportes_empleador: APORTES,
+  arl_clases: ARL,
 }
 
 const PERIODO: PeriodoNomina = {
@@ -96,6 +158,7 @@ function trabajador(p: Partial<Trabajador> & { id: string }): Trabajador {
     tarifa_hora: 0,
     tiene_auxilio_transporte: false,
     tipo_contrato: 'termino_indefinido',
+    clase_riesgo: 'II',
     fecha_ingreso: '2025-01-01',
     activo: true,
     ...p,
@@ -139,13 +202,32 @@ describe('valor de la hora', () => {
     expect(valorHora(t, { ...PARAMETROS, horas_mes: 0 })).toBe(0)
   })
 
-  it('los recargos salen de la configuración, y ordinaria es 1 y ausencia 0', () => {
+  it('los siete recargos salen de la configuración, y ordinaria es 1 y ausencia 0', () => {
     expect(recargoDe('ordinaria', PARAMETROS)).toBe(1)
     expect(recargoDe('ausencia', PARAMETROS)).toBe(0)
     expect(recargoDe('extra_diurna', PARAMETROS)).toBe(1.25)
     expect(recargoDe('extra_nocturna', PARAMETROS)).toBe(1.75)
     expect(recargoDe('recargo_nocturno', PARAMETROS)).toBe(0.35)
-    expect(recargoDe('dominical', PARAMETROS)).toBe(0.75)
+    expect(recargoDe('dominical', PARAMETROS)).toBe(0.9)
+    expect(recargoDe('recargo_nocturno_dominical', PARAMETROS)).toBe(1.25)
+    expect(recargoDe('extra_diurna_dominical', PARAMETROS)).toBe(2.15)
+    expect(recargoDe('extra_nocturna_dominical', PARAMETROS)).toBe(2.65)
+  })
+
+  it('la tabla distingue los que pagan la hora entera de los que son solo el recargo', () => {
+    expect(CLASE_RECARGO.extra_diurna).toBe('completo')
+    expect(CLASE_RECARGO.extra_nocturna).toBe('completo')
+    expect(CLASE_RECARGO.extra_diurna_dominical).toBe('completo')
+    expect(CLASE_RECARGO.extra_nocturna_dominical).toBe('completo')
+    expect(CLASE_RECARGO.recargo_nocturno).toBe('adicional')
+    expect(CLASE_RECARGO.dominical).toBe('adicional')
+    expect(CLASE_RECARGO.recargo_nocturno_dominical).toBe('adicional')
+  })
+
+  it('las ocho clases de hora se pueden imputar a una orden; la ausencia no', () => {
+    expect(TIPOS_HORA).toHaveLength(8)
+    expect(TIPOS_HORA_REGISTRO).toHaveLength(9)
+    expect(TIPOS_HORA).not.toContain('ausencia')
   })
 })
 
@@ -159,12 +241,12 @@ describe('un salario mensual NO se multiplica por las horas', () => {
   it('el salario del período es el salario, trabaje 200 o 240 horas', () => {
     const base200 = salarioBasePeriodo(
       t,
-      { ordinaria: 200, extra_diurna: 0, extra_nocturna: 0, recargo_nocturno: 0, dominical: 0, ausencia: 0 },
+      horasVacias({ ordinaria: 200 }),
       PARAMETROS,
     )
     const base240 = salarioBasePeriodo(
       t,
-      { ordinaria: 240, extra_diurna: 0, extra_nocturna: 0, recargo_nocturno: 0, dominical: 0, ausencia: 0 },
+      horasVacias({ ordinaria: 240 }),
       PARAMETROS,
     )
 
@@ -178,7 +260,7 @@ describe('un salario mensual NO se multiplica por las horas', () => {
     const porHora = trabajador({ id: 'b', modalidad: 'por_hora', tarifa_hora: 8000, salario_basico: 0 })
     const base = salarioBasePeriodo(
       porHora,
-      { ordinaria: 180, extra_diurna: 0, extra_nocturna: 0, recargo_nocturno: 0, dominical: 0, ausencia: 0 },
+      horasVacias({ ordinaria: 180 }),
       PARAMETROS,
     )
     expect(base).toBe(1_440_000)
@@ -347,8 +429,27 @@ describe('recargos', () => {
     expect(liq('recargo_nocturno', 20).extras_y_recargos).toBe(42_000) // 20 x 6.000 x 0,35
   })
 
-  it('dominical: solo el 75% adicional', () => {
-    expect(liq('dominical', 8).extras_y_recargos).toBe(36_000) // 8 x 6.000 x 0,75
+  it('dominical: solo el 90% adicional', () => {
+    expect(liq('dominical', 8).extras_y_recargos).toBe(43_200) // 8 x 6.000 x 0,90
+  })
+
+  it('recargo nocturno dominical: solo el 125% adicional', () => {
+    expect(liq('recargo_nocturno_dominical', 4).extras_y_recargos).toBe(30_000) // 4 x 6.000 x 1,25
+  })
+
+  it('extra diurna dominical: la hora entera al 215%', () => {
+    expect(liq('extra_diurna_dominical', 4).extras_y_recargos).toBe(51_600) // 4 x 6.000 x 2,15
+  })
+
+  it('extra nocturna dominical: la hora entera al 265%', () => {
+    expect(liq('extra_nocturna_dominical', 4).extras_y_recargos).toBe(63_600) // 4 x 6.000 x 2,65
+  })
+
+  it('la extra nocturna paga la hora entera y el recargo nocturno solo el adicional', () => {
+    // 10 h al 175% son 10,5 veces lo que las mismas 10 h de recargo al 35%
+    expect(liq('extra_nocturna', 10).extras_y_recargos).toBe(105_000)
+    expect(liq('recargo_nocturno', 10).extras_y_recargos).toBe(21_000)
+    expect(105_000 / 21_000).toBe(5)
   })
 
   it('cambiar el recargo en la configuración cambia el resultado', () => {
@@ -460,7 +561,14 @@ describe('novedades y conceptos configurables', () => {
     })
     expect(l.bonificaciones).toBe(100_000)
     expect(l.total_devengado).toBe(1_540_000)
-    expect(l.costo_empresa).toBe(2_310_000) // 1.540.000 x 1,5
+    /*
+      El costo-empresa NO es devengado x 1,5: la bonificación no es salarial
+      (afecta_base_prestacional en false), así que no entra al IBC y no causa
+      aportes. El IBC se queda en 1.440.000 y los aportes en 720.000.
+    */
+    expect(l.base_prestacional).toBe(1_440_000)
+    expect(l.carga_prestacional).toBe(720_000)
+    expect(l.costo_empresa).toBe(2_260_000) // 1.540.000 + 720.000
   })
 
   it('una deducción baja el neto pero NO el costo-empresa', () => {
@@ -538,21 +646,59 @@ describe('novedades y conceptos configurables', () => {
   })
 })
 
-describe('el costo-empresa es exactamente devengado x (1 + factor)', () => {
+describe('el costo-empresa es el devengado más los aportes', () => {
+  /** Los mismos parámetros pero con la carga prestacional en otro porcentaje. */
+  const conFactor = (pctTotal: number): ParametrosCalculo => ({
+    ...PARAMETROS,
+    aportes_empleador: [
+      {
+        id: 'todo',
+        grupo: 'prestaciones',
+        nombre: 'Carga prestacional',
+        pct: pctTotal,
+        activo: true,
+        cuando_corresponda: false,
+      },
+    ],
+  })
+
   for (const factor of [0, 0.25, 0.5, 0.52, 1]) {
     it(`con factor ${factor}`, () => {
+      const parametros = conFactor(factor * 100)
       const l = liquidar({
         trabajador: trabajador({ id: 'a' }),
         periodo: PERIODO,
         horas: [horas('a', 'ordinaria', 240), horas('a', 'extra_diurna', 7)],
         novedades: [],
         conceptos: CONCEPTOS,
-        parametros: { ...PARAMETROS, factor_prestacional: factor },
+        parametros,
       })
-      expect(l.costo_empresa).toBeCloseTo(l.total_devengado * (1 + factor), 6)
-      expect(l.carga_prestacional).toBeCloseTo(l.total_devengado * factor, 6)
+
+      // sin conceptos no salariales, el IBC es el devengado completo
+      expect(l.base_prestacional).toBe(l.total_devengado)
+      expect(l.factor_prestacional).toBeCloseTo(factor, 10)
+      expect(l.carga_prestacional).toBeCloseTo(l.base_prestacional * factor, 6)
+      expect(l.costo_empresa).toBeCloseTo(l.total_devengado + l.carga_prestacional, 6)
     })
   }
+
+  it('el desglose suma exactamente la carga prestacional', () => {
+    const l = liquidar({
+      trabajador: trabajador({ id: 'a' }),
+      periodo: PERIODO,
+      horas: [horas('a', 'ordinaria', 240), horas('a', 'extra_diurna', 7)],
+      novedades: [],
+      conceptos: CONCEPTOS,
+      parametros: PARAMETROS_REALES,
+    })
+
+    const suma = l.aportes.reduce((s, a) => s + a.monto, 0)
+    expect(suma).toBeCloseTo(l.carga_prestacional, 6)
+    expect(l.total_devengado + suma).toBeCloseTo(l.costo_empresa, 6)
+    // una línea por cada aporte activo, mas la de ARL
+    expect(l.aportes).toHaveLength(10)
+    expect(l.aportes.every((a) => a.base === l.base_prestacional)).toBe(true)
+  })
 })
 
 // =====================================================================
@@ -864,5 +1010,181 @@ describe('cuadre de horas de los directos', () => {
   it('sin horas imputadas no molesta: todavía no se repartió nada', () => {
     const { alertas } = cuadreHorasDirectas(liquidaciones, [], [directo, indirecto])
     expect(alertas).toEqual([])
+  })
+})
+
+// =====================================================================
+// LA SEGUNDA BASE: cesantias, prima e intereses sobre salario + auxilio
+// =====================================================================
+
+describe('base_con_auxilio', () => {
+  const AUXILIO: ConceptoRemuneracion = {
+    id: 'auxilio',
+    nombre: 'Auxilio de transporte',
+    tipo: 'devengado',
+    base: 'fijo',
+    porcentaje: null,
+    monto_fijo: 200_000,
+    afecta_base_prestacional: false,
+    automatico: true,
+    requiere_auxilio_transporte: true,
+    activo: true,
+  }
+
+  /** Dos lineas del 10%: una sobre el IBC y otra sobre el IBC + auxilio. */
+  const P: ParametrosCalculo = {
+    ...PARAMETROS,
+    horas_mes: 200,
+    aportes_empleador: [
+      { id: 'sobre_ibc', grupo: 'seguridad_social', nombre: 'Pensión', pct: 10, activo: true, cuando_corresponda: false },
+      { id: 'con_auxilio', grupo: 'prestaciones', nombre: 'Cesantías', pct: 10, activo: true, cuando_corresponda: false, base_con_auxilio: true },
+    ],
+    arl_clases: { I: 0, II: 0, III: 0, IV: 0, V: 0 },
+  }
+
+  const conAuxilio = trabajador({ id: 'ta', salario_basico: 2_000_000, tiene_auxilio_transporte: true })
+  const sinAuxilio = trabajador({ id: 'tb', salario_basico: 2_000_000, tiene_auxilio_transporte: false })
+
+  const liquidarCon = (t: Trabajador) =>
+    liquidar({
+      trabajador: t,
+      periodo: PERIODO,
+      horas: [horas(t.id, 'ordinaria', 200)],
+      novedades: [],
+      conceptos: [AUXILIO],
+      parametros: P,
+    })
+
+  it('el auxilio se devenga pero NO entra al IBC', () => {
+    const l = liquidarCon(conAuxilio)
+    expect(l.total_devengado).toBe(2_200_000)
+    expect(l.base_prestacional).toBe(2_000_000)
+    expect(l.auxilio_transporte).toBe(200_000)
+  })
+
+  it('cada línea usa la base que le toca, y queda registrada', () => {
+    const l = liquidarCon(conAuxilio)
+    const porId = Object.fromEntries(l.aportes.map((a) => [a.id, a]))
+
+    expect(porId.sobre_ibc.base).toBe(2_000_000)
+    expect(porId.sobre_ibc.monto).toBe(200_000)
+
+    expect(porId.con_auxilio.base).toBe(2_200_000)
+    expect(porId.con_auxilio.monto).toBe(220_000)
+  })
+
+  it('sin auxilio las dos líneas dan lo mismo', () => {
+    const l = liquidarCon(sinAuxilio)
+    const porId = Object.fromEntries(l.aportes.map((a) => [a.id, a]))
+
+    expect(l.auxilio_transporte).toBe(0)
+    expect(porId.sobre_ibc.monto).toBe(200_000)
+    expect(porId.con_auxilio.monto).toBe(200_000)
+  })
+
+  it('el factor que se reporta es el EFECTIVO, no la suma de los porcentajes', () => {
+    const l = liquidarCon(conAuxilio)
+    // 420.000 / 2.000.000 = 21%, no el 20% nominal
+    expect(l.carga_prestacional).toBe(420_000)
+    expect(l.factor_prestacional).toBeCloseTo(0.21, 10)
+
+    // y sin auxilio sí coincide con el nominal
+    expect(liquidarCon(sinAuxilio).factor_prestacional).toBeCloseTo(0.2, 10)
+  })
+
+  it('el costo-empresa sigue siendo devengado + carga, al peso', () => {
+    const l = liquidarCon(conAuxilio)
+    expect(l.costo_empresa).toBe(2_200_000 + 420_000)
+    expect(l.aportes.reduce((s, a) => s + a.monto, 0)).toBe(l.carga_prestacional)
+  })
+})
+
+// =====================================================================
+// LA TARIFA REAL DEL PERIODO
+// =====================================================================
+
+describe('tarifa_mod_desde: liquidacion', () => {
+  const P_LIQ: ParametrosCalculo = { ...PARAMETROS, tarifa_mod_desde: 'liquidacion' }
+
+  const directo = trabajador({ id: 't1', salario_basico: 2_400_000 })
+  const orden: OrdenProduccion = {
+    id: 'o1',
+    numero: 'OP-1',
+    producto_id: 'p1',
+    cantidad_programada: 10,
+    cantidad_terminada: null,
+    fecha_fin: null,
+    estado: 'abierta',
+    fecha_inicio: '2025-09-01',
+  }
+
+  const liquidacion = liquidar({
+    trabajador: directo,
+    periodo: PERIODO,
+    horas: [horas('t1', 'ordinaria', 240)],
+    novedades: [],
+    conceptos: [],
+    parametros: P_LIQ,
+  })
+
+  const asignacion = (horasImputadas: number, tarifa: number | null = null) => ({
+    id: 'a1',
+    orden_id: 'o1',
+    trabajador_id: 't1',
+    periodo_id: PERIODO.id,
+    fecha: '2025-09-15',
+    tipo_hora: 'ordinaria' as const,
+    horas: horasImputadas,
+    tarifa_hora: tarifa,
+  })
+
+  it('tarifaPorLiquidacion divide el costo-empresa entre las horas de la jornada', () => {
+    const tarifas = tarifaPorLiquidacion([liquidacion])
+    // 2.400.000 x 1,5 = 3.600.000 entre 240 h = 15.000
+    expect(liquidacion.costo_empresa).toBe(3_600_000)
+    expect(tarifas.t1).toBe(15_000)
+  })
+
+  it('costea la hora con esa tarifa y NO vuelve a aplicar el factor', () => {
+    const tarifas = tarifaPorLiquidacion([liquidacion])
+    const { porOrden } = manoObraPorOrden([orden], [asignacion(100)], [directo], P_LIQ, tarifas)
+
+    expect(porOrden.o1.lineas[0].valor_hora).toBe(15_000)
+    // 100 x 15.000, sin multiplicar otra vez por 1,5
+    expect(porOrden.o1.total).toBe(1_500_000)
+    expect(porOrden.o1.total_con_factor).toBe(1_500_000)
+  })
+
+  it('deja sin absorber las horas que no se imputaron: eso es el ocioso', () => {
+    const tarifas = tarifaPorLiquidacion([liquidacion])
+    const { porOrden } = manoObraPorOrden([orden], [asignacion(200)], [directo], P_LIQ, tarifas)
+
+    const ocioso = liquidacion.costo_empresa - porOrden.o1.total
+    expect(ocioso).toBe(40 * 15_000)
+  })
+
+  it('en el modo por defecto la tarifa sigue siendo el valor hora x factor', () => {
+    const { porOrden } = manoObraPorOrden([orden], [asignacion(100)], [directo], PARAMETROS, {})
+    // 2.400.000 / 240 = 10.000, cargado al 50% = 15.000 el total por hora
+    expect(porOrden.o1.lineas[0].valor_hora).toBe(10_000)
+    expect(porOrden.o1.total).toBe(1_500_000)
+  })
+
+  it('sin liquidación cae al valor hora y avisa por qué', () => {
+    const { porOrden, alertas } = manoObraPorOrden([orden], [asignacion(100)], [directo], P_LIQ, {})
+
+    expect(porOrden.o1.lineas[0].valor_hora).toBe(10_000)
+    // acá sí se aplica el factor, porque la tarifa no lo trae
+    expect(porOrden.o1.total).toBe(1_500_000)
+    expect(alertas.some((a) => /no tiene nómina liquidada/i.test(a.mensaje))).toBe(true)
+  })
+
+  it('una tarifa escrita en la asignación manda sobre todo', () => {
+    const tarifas = tarifaPorLiquidacion([liquidacion])
+    const { porOrden } = manoObraPorOrden([orden], [asignacion(100, 20_000)], [directo], P_LIQ, tarifas)
+
+    expect(porOrden.o1.lineas[0].valor_hora).toBe(20_000)
+    // esa sí es salario puro, así que se le aplica el factor
+    expect(porOrden.o1.total).toBe(100 * 20_000 * 1.5)
   })
 })

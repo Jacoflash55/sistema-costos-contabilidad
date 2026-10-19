@@ -45,6 +45,7 @@ import type {
   ID,
   ItemReceta,
   MateriaPrima,
+  Mes,
   MovimientoKardex,
   Novedad,
   OrdenProduccion,
@@ -52,6 +53,7 @@ import type {
   PeriodoNomina,
   Producto,
   Receta,
+  SupuestoEquilibrio,
   TipoHoraRegistro,
   Trabajador,
 } from './lib/tipos'
@@ -703,6 +705,85 @@ export function ProveedorEstado({ children }: { children: ReactNode }) {
     [produccion.ordenes, comercial.ventas, comercial.clientes, actualizarComercial],
   )
 
+
+  // ---------------------------------------------------------------------
+  // Supuestos del punto de equilibrio
+  // ---------------------------------------------------------------------
+
+  /*
+    Son los numeros que la empresa pone a mano encima de lo que el sistema
+    deriva. Se guardan en la rebanada comercial, asi que viajan en el respaldo
+    y en localStorage como todo lo demas.
+
+    DOS DETALLES QUE IMPORTAN:
+
+    - La fila se identifica por (periodo, producto_id), y `producto_id: null`
+      es la fila del periodo. No se crea mas de una.
+    - Cuando la fila se queda con los cuatro campos en null se BORRA. Si no,
+      quedarian filas que dicen «hay un supuesto» sin cambiar ningun numero, y
+      la pantalla mostraria «manual» sobre un valor derivado.
+  */
+  const fijarSupuestoEquilibrio = useCallback(
+    (
+      periodo: Mes,
+      productoId: ID | null,
+      parcial: Partial<
+        Pick<
+          SupuestoEquilibrio,
+          'costos_fijos' | 'precio_venta' | 'costo_variable_unitario' | 'mezcla_unidades'
+        >
+      >,
+    ) => {
+      setComercial((prev) => {
+        const lista = prev.supuestos_equilibrio ?? []
+        const i = lista.findIndex((s) => s.periodo === periodo && s.producto_id === productoId)
+
+        const base: SupuestoEquilibrio =
+          i >= 0
+            ? lista[i]
+            : {
+                id: nuevoId(),
+                periodo,
+                producto_id: productoId,
+                costos_fijos: null,
+                precio_venta: null,
+                costo_variable_unitario: null,
+                mezcla_unidades: null,
+              }
+
+        const fila: SupuestoEquilibrio = { ...base, ...parcial }
+
+        const vacia =
+          fila.costos_fijos == null &&
+          fila.precio_venta == null &&
+          fila.costo_variable_unitario == null &&
+          fila.mezcla_unidades == null
+
+        let supuestos_equilibrio: SupuestoEquilibrio[]
+        if (vacia) supuestos_equilibrio = lista.filter((_, j) => j !== i)
+        else if (i >= 0) supuestos_equilibrio = lista.map((s, j) => (j === i ? fila : s))
+        else supuestos_equilibrio = [...lista, fila]
+
+        const next = { ...prev, supuestos_equilibrio }
+        guardar(CLAVES.comercial, next)
+        return next
+      })
+      setHayCambiosLocales(true)
+    },
+    [],
+  )
+
+  const limpiarSupuestosEquilibrio = useCallback((periodo: Mes) => {
+    setComercial((prev) => {
+      const next = {
+        ...prev,
+        supuestos_equilibrio: (prev.supuestos_equilibrio ?? []).filter((s) => s.periodo !== periodo),
+      }
+      guardar(CLAVES.comercial, next)
+      return next
+    })
+    setHayCambiosLocales(true)
+  }, [])
   // ---------------------------------------------------------------------
   // Hojas de costos
   // ---------------------------------------------------------------------
@@ -934,6 +1015,8 @@ export function ProveedorEstado({ children }: { children: ReactNode }) {
       crearCliente,
       actualizarCliente,
       borrarCliente,
+      fijarSupuestoEquilibrio,
+      limpiarSupuestosEquilibrio,
       crearHoja,
       actualizarHoja,
       borrarHoja,
@@ -996,6 +1079,8 @@ export function ProveedorEstado({ children }: { children: ReactNode }) {
       crearCliente,
       actualizarCliente,
       borrarCliente,
+      fijarSupuestoEquilibrio,
+      limpiarSupuestosEquilibrio,
       crearHoja,
       actualizarHoja,
       borrarHoja,

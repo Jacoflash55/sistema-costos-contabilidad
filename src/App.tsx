@@ -7,6 +7,7 @@ import { ProveedorEstado } from './estado'
 import { Configuracion } from './pages/Configuracion'
 import { Kardex } from './pages/Kardex'
 import { CIF } from './pages/CIF'
+import { Equilibrio } from './pages/Equilibrio'
 import { HojasCostos } from './pages/HojasCostos'
 import { MateriasPrimas } from './pages/MateriasPrimas'
 import { Nomina } from './pages/Nomina'
@@ -14,16 +15,41 @@ import { Ordenes } from './pages/Ordenes'
 import { Productos } from './pages/Productos'
 import { Proximamente } from './pages/Proximamente'
 
-const PAGINAS = [
-  { a: '/', icono: '⚙️', texto: 'Configuración' },
-  { a: '/materias-primas', icono: '🧱', texto: 'Materias primas' },
-  { a: '/kardex', icono: '📋', texto: 'Kardex' },
-  { a: '/productos', icono: '📦', texto: 'Productos' },
-  { a: '/ordenes', icono: '🏭', texto: 'Órdenes' },
-  { a: '/nomina', icono: '👷', texto: 'Nómina' },
-  { a: '/cif', icono: '🔧', texto: 'CIF' },
-  { a: '/hojas-costos', icono: '🧾', texto: 'Hojas de costos' },
-  { a: '/informes', icono: '📊', texto: 'Informes' },
+/*
+  EL ORDEN DE LA NAVEGACION CUENTA UNA HISTORIA, y es la del ejercicio:
+
+    1. SE CONFIGURA   una sola vez: la empresa y los parametros del calculo.
+    2. SE REGISTRA    lo que vos cargas: materiales, productos, ordenes,
+                      nomina, CIF. Son los DATOS DE ENTRADA.
+    3. SE CALCULA     lo que el sistema deriva solo de lo anterior: el Kardex,
+                      las hojas de costos, el punto de equilibrio. Aca no se
+                      escribe NADA; si un numero esta mal, se arregla en el
+                      grupo 2.
+
+  Es el mismo reparto de la regla de oro del proyecto —las formulas viven en
+  `src/lib/` y la UI no calcula nada— pero visible en la barra de arriba.
+*/
+type Grupo = 'configura' | 'registra' | 'calcula'
+
+const ETIQUETA_GRUPO_NAV: Record<Grupo, string> = {
+  configura: 'Se configura',
+  registra: 'Se registra',
+  calcula: 'Se calcula solo',
+}
+
+const PAGINAS: ReadonlyArray<{ a: string; icono: string; texto: string; grupo: Grupo }> = [
+  { a: '/', icono: '⚙️', texto: 'Configuración', grupo: 'configura' },
+
+  { a: '/materias-primas', icono: '🧱', texto: 'Materias primas', grupo: 'registra' },
+  { a: '/productos', icono: '📦', texto: 'Productos', grupo: 'registra' },
+  { a: '/ordenes', icono: '🏭', texto: 'Órdenes', grupo: 'registra' },
+  { a: '/nomina', icono: '👷', texto: 'Nómina', grupo: 'registra' },
+  { a: '/cif', icono: '🔧', texto: 'CIF', grupo: 'registra' },
+
+  { a: '/kardex', icono: '📋', texto: 'Kardex', grupo: 'calcula' },
+  { a: '/hojas-costos', icono: '🧾', texto: 'Hojas de costos', grupo: 'calcula' },
+  { a: '/equilibrio', icono: '⚖️', texto: 'Punto de equilibrio', grupo: 'calcula' },
+  { a: '/informes', icono: '📊', texto: 'Informes', grupo: 'calcula' },
 ]
 
 function BotonTema() {
@@ -42,26 +68,37 @@ function BotonTema() {
 }
 
 function Navegacion() {
+  /* Los grupos en el orden en que aparecen, sin repetir. */
+  const grupos = [...new Set(PAGINAS.map((p) => p.grupo))]
+
   return (
-    <nav className="flex gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-      {PAGINAS.map((p) => (
-        <NavLink
-          key={p.a}
-          to={p.a}
-          end={p.a === '/'}
-          className={({ isActive }) =>
-            `flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition ${
-              isActive
-                ? 'bg-acento/14 font-semibold text-acento'
-                : 'text-suave hover:bg-panel-alto hover:text-texto'
-            }`
-          }
-        >
-          <span aria-hidden className="text-xs">
-            {p.icono}
+    <nav className="flex items-center gap-1 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+      {grupos.map((g, i) => (
+        <div key={g} className="flex shrink-0 items-center gap-1">
+          {i > 0 && <span aria-hidden className="mx-1 h-5 w-px shrink-0 bg-borde" />}
+          <span className="hidden shrink-0 select-none pr-0.5 text-[10px] font-medium uppercase tracking-wider text-tenue lg:inline">
+            {ETIQUETA_GRUPO_NAV[g]}
           </span>
-          {p.texto}
-        </NavLink>
+          {PAGINAS.filter((p) => p.grupo === g).map((p) => (
+            <NavLink
+              key={p.a}
+              to={p.a}
+              end={p.a === '/'}
+              className={({ isActive }) =>
+                `flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition ${
+                  isActive
+                    ? 'bg-acento/14 font-semibold text-acento'
+                    : 'text-suave hover:bg-panel-alto hover:text-texto'
+                }`
+              }
+            >
+              <span aria-hidden className="text-xs">
+                {p.icono}
+              </span>
+              {p.texto}
+            </NavLink>
+          ))}
+        </div>
       ))}
     </nav>
   )
@@ -253,6 +290,7 @@ function Cascara() {
           <Route path="/nomina" element={<Nomina />} />
           <Route path="/cif" element={<CIF />} />
           <Route path="/hojas-costos" element={<HojasCostos />} />
+          <Route path="/equilibrio" element={<Equilibrio />} />
           <Route
             path="/informes"
             element={

@@ -33,7 +33,10 @@ const CONFIG: Config = {
   empresa: { ...CONFIG_BASE.empresa, razon_social: 'Carpintería de Prueba S.A.S.', nit: '900.000.000-0' },
   parametros: {
     ...CONFIG_BASE.parametros,
-    factor_prestacional: 0.5,
+    aportes_empleador: [
+      { id: 'todo', grupo: 'prestaciones', nombre: 'Carga prestacional', pct: 50, activo: true, cuando_corresponda: false },
+    ],
+    arl_clases: { I: 0, II: 0, III: 0, IV: 0, V: 0 },
     margen_por_defecto_pct: 30,
     redondeo_precio_multiplo: 100,
     metodo_margen: 'sobre_costo',
@@ -624,6 +627,7 @@ describe('integración de punta a punta por calcularTodo', () => {
           tarifa_hora: 0,
           tiene_auxilio_transporte: false,
           tipo_contrato: 'termino_indefinido',
+          clase_riesgo: 'II',
           fecha_ingreso: '2025-01-01',
           activo: true,
         },
@@ -709,6 +713,7 @@ describe('integración de punta a punta por calcularTodo', () => {
       clientes: [{ id: 'cl1', nombre: 'Muebles del Norte', activo: true }],
       ventas: [],
       gastos: [],
+      supuestos_equilibrio: [],
     },
   }
 

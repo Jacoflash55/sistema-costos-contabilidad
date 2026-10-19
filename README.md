@@ -11,6 +11,12 @@ JSON de `data/` (la semilla) y en el almacenamiento local del navegador (lo que 
 > el taller: no son asesoría laboral ni contable, y no garantizan el cumplimiento de la ley
 > colombiana vigente.
 
+> **¿Primera vez?** [`GUIA-TALLER.md`](GUIA-TALLER.md) resuelve el taller de la empresa XYZ paso a
+> paso con el sistema: qué se agrega, dónde, cómo y por qué, día por día y compra por compra. Es la
+> mejor forma de aprender a usarlo, y [`COMO-CALCULA.md`](COMO-CALCULA.md) es la hoja de defensa para
+> la exposición. El respaldo con la solución está en
+> `ejemplos/taller-octubre-xyz.json`.
+
 ---
 
 ## Cómo lo corro
@@ -25,7 +31,7 @@ Se abre en `http://localhost:5173`. Para pararlo, `Ctrl+C`.
 | Comando | Qué hace |
 |---|---|
 | `npm run dev` | Levanta la app con recarga en vivo |
-| `npm test` | Corre los 202 tests de las fórmulas |
+| `npm test` | Corre los 345 tests de las fórmulas |
 | `npm run test:watch` | Tests en vivo mientras editás |
 | `npm run typecheck` | Revisa los tipos sin compilar |
 | `npm run build` | Genera `dist/` para subir a Cloudflare |
@@ -81,8 +87,24 @@ src/
   pages/               una pantalla por módulo
   App.tsx              el cascarón: navegación + respaldo global
 
-tests/                 formato, almacenamiento y Kardex
+tests/                 un archivo por motor: formato, almacenamiento, kardex,
+                       nomina, prestaciones, cif, hoja
 ```
+
+
+### El orden de la navegación
+
+La barra de arriba está partida en tres grupos y el orden cuenta la historia del ejercicio:
+
+| Grupo | Páginas | Qué pasa ahí |
+|---|---|---|
+| **Se configura** | Configuración | Los parámetros del cálculo. Una sola vez. |
+| **Se registra** | Materias primas · Productos · Órdenes · Nómina · CIF | **Vos escribís.** Datos de entrada. |
+| **Se calcula solo** | Kardex · Hojas de costos · Punto de equilibrio · Informes | **No se escribe nada.** |
+
+Es la regla de oro, visible: si un número del tercer grupo está mal, el error está en el segundo. No
+hay ninguna casilla donde se pueda corregir un resultado a mano, y es a propósito — un costo que se
+puede escribir encima es un costo que nadie puede auditar.
 
 ### La regla de oro
 
@@ -152,8 +174,9 @@ mismo cálculo. El enganche para agregar PEPS está marcado en `src/lib/kardex.t
 
 ## La nómina
 
-Modelo **académico simplificado**: resuelve el taller, no implementa la ley laboral. No maneja IBC,
-topes ni bases especiales. Todo lo paramétrico está en Configuración.
+Modelo **académico simplificado**: resuelve el taller, no implementa la ley laboral. El IBC acá es
+simplemente el devengado salarial, sin topes ni bases especiales. Todo lo paramétrico está en
+Configuración y es editable.
 
 ```
 valor_hora (mensual)  = salario_mensual ÷ horas_mes
@@ -162,7 +185,11 @@ valor_hora (por hora) = tarifa_hora
 valor de las horas    = Σ (horas_tipo × valor_hora × recargo_tipo)
 total_devengado       = salario_base_período + extras_y_recargos + bonificaciones
 neto                  = max(0, total_devengado − deducciones)
-costo_MO_empresa      = total_devengado × (1 + factor_prestacional)
+
+IBC (base)            = salario_del_período + extras_y_recargos     ← devengado salarial
+factor_prestacional   = Σ pct de las líneas activas del trabajador ÷ 100
+carga_prestacional    = Σ (IBC × pct_línea ÷ 100)
+costo_MO_empresa      = total_devengado + carga_prestacional
 costo_MOD_orden       = Σ (horas_imputadas × valor_hora × recargo × (1 + factor))
 ```
 
@@ -172,18 +199,98 @@ cuentan para saber cuánto tiempo se trabajó y poder imputarlo a órdenes; lo �
 son extras y recargos. Un trabajador por hora sí multiplica sus ordinarias por la tarifa. Hay un test
 que compara las dos modalidades con el mismo valor hora para fijarlo.
 
-**Cómo se leen los recargos.** `extra_diurna 1,25` y `extra_nocturna 1,75` son factores completos: la
-hora es adicional y se paga entera por ese número. `recargo_nocturno 0,35` y `dominical 0,75` son solo
-el adicional, porque la hora ya se pagó como ordinaria. Para un trabajador por hora eso significa que
-una hora dominical se anota **dos veces**: como ordinaria (para pagar la hora) y como dominical (para
-pagar el recargo). La pantalla de horas lo dice.
+**Cómo se leen los recargos (los 7).** Hay dos clases de recargo y confundirlas es el error clásico.
+Un factor **completo** paga la hora entera por ese número, porque es una hora adicional a la jornada.
+Un factor **adicional** paga solo el sobrecosto, porque la hora ya se pagó como ordinaria.
+
+| Tipo de hora | Parámetro | Valor académico | Clase | Qué significa |
+|---|---|---|---|---|
+| Extra diurna | `extra_diurna` | 1,25 | completo | hora adicional de día: se paga 125% |
+| Extra nocturna | `extra_nocturna` | 1,75 | completo | hora adicional de noche: se paga 175% |
+| Recargo nocturno | `recargo_nocturno` | 0,35 | adicional | la hora ordinaria cayó de noche: +35% |
+| Dominical o festiva | `dominical` | 0,90 | adicional | la hora ordinaria cayó en domingo: +90% |
+| Recargo nocturno dominical | `recargo_nocturno_dominical` | 1,25 | adicional | domingo de noche: 0,90 + 0,35 |
+| Extra diurna dominical | `extra_diurna_dominical` | 2,15 | completo | extra de día en domingo: 1,25 + 0,90 |
+| Extra nocturna dominical | `extra_nocturna_dominical` | 2,65 | completo | extra de noche en domingo: 1,75 + 0,90 |
+
+Los cuatro **adicionales** obligan a anotar la hora **dos veces** en un trabajador por hora: una vez
+como ordinaria (para pagar la hora) y otra en su columna de recargo (para pagar el sobrecosto). Los
+tres **completos** se anotan una sola vez. La pantalla de horas rotula cada columna con su clase, y
+`CLASE_RECARGO` en `src/lib/nomina.ts` es la fuente única de esa distinción.
+
+Todos los valores son **editables** en Configuración. Son los que usa el taller, no una afirmación de
+cumplimiento legal.
+
+### Las prestaciones, línea por línea
+
+El factor prestacional **no se escribe a mano**: se deriva sumando una tabla de aportes del empleador.
+
+```
+factor_prestacional = Σ pct de las líneas activas ÷ 100
+aporte_de_la_línea  = IBC × pct ÷ 100
+carga_prestacional  = Σ aportes
+costo_empresa       = total_devengado + carga_prestacional
+```
+
+La tabla vive en `parametros.aportes_empleador` y se edita en Configuración. Cada línea tiene grupo
+(prestaciones sociales, seguridad social, parafiscales), nombre, porcentaje, un interruptor `activo` y
+una marca `cuando_corresponda`. El ARL es aparte: se toma de `parametros.arl_clases` según la **clase
+de riesgo** del trabajador (I a V), así que dos personas con el mismo sueldo pueden costar distinto.
+
+Los valores académicos que trae el seed:
+
+| Grupo | Línea | % |
+|---|---|---|
+| Prestaciones sociales | Cesantías | 8,33 |
+| Prestaciones sociales | Prima de servicios | 8,33 |
+| Prestaciones sociales | Intereses sobre cesantías | 1,00 |
+| Prestaciones sociales | Vacaciones | 4,17 |
+| Seguridad social | Pensión (empleador) | 12,00 |
+| Seguridad social | Salud (empleador) | 8,50 · *cuando corresponda* |
+| Seguridad social | ARL | según clase: I 0,522 · II 1,044 · III 2,436 · IV 4,35 · V 6,96 |
+| Parafiscales | Caja de compensación | 4,00 |
+| Parafiscales | SENA | 2,00 · *cuando corresponda* |
+| Parafiscales | ICBF | 3,00 · *cuando corresponda* |
+
+**Qué es el IBC acá.** La base de cada aporte es el **devengado salarial**: salario del período más
+extras y recargos. **No** entran las bonificaciones no salariales, y por eso aparecen en la
+liquidación fuera de la base. Es una simplificación académica: no hay topes, ni bases mínimas, ni
+límites de 25 SMMLV.
+
+**Las dos bases.** La única excepción que el sistema modela, porque es la que se pide en todos los
+talleres: **cesantías, prima e intereses sobre cesantías van sobre salario + auxilio de transporte**,
+mientras que pensión, salud, ARL, parafiscales y vacaciones van solo sobre el salario. Cada línea de
+la tabla tiene una columna **Base** que se cambia con un clic (`IBC` ↔ `IBC + auxilio`), y la
+liquidación muestra con cuál se calculó cada renglón. Con la base ampliada activa, el factor que se
+reporta es el **efectivo** (carga ÷ IBC), no la suma de los porcentajes: con todas las líneas sobre el
+IBC los dos coinciden, y si alguna usa el auxilio el efectivo es mayor. Reportar la suma sería mentir
+sobre lo que cuesta la hora.
+
+**Las tres marcas *cuando corresponda*** son salud del empleador, SENA e ICBF: son los aportes que la
+**exoneración del Art. 114-1 del Estatuto Tributario** puede eliminar para ciertos empleadores. El
+botón «Aplicar exoneración 114-1» de Configuración apaga las tres de una vez; volverlas a encender las
+restaura. Si aplica o no en un caso real es una decisión del ejercicio, no del sistema.
+
+**Overrides por trabajador.** Por defecto cada trabajador hereda las líneas globales. En su ficha, el
+panel de prestaciones permite decir «no, las mías son distintas» y cambiar el porcentaje o apagar
+líneas solo para esa persona (`trabajador.aportes_override`). Cada línea muestra su origen —Global o
+Propio— y el panel compara el factor resultante contra el que tendría si heredara. «Volver a las
+globales» borra el override. Cambiar un porcentaje global mueve a todos **menos** a quien lo tenga
+sobrescrito; hay tests que lo fijan.
+
+**El prorrateo, a la vista.** Un trabajador mensual cobra su salario completo; lo que lo baja son las
+horas que no trabajó. La liquidación muestra las cuatro cifras: horas esperadas, trabajadas,
+descontadas y el descuento en pesos. Las ausencias registradas siempre descuentan. El interruptor
+`prorratear_ordinarias` (apagado por defecto) decide si además se descuentan las horas que
+simplemente **faltan** para completar el mes; con él apagado, un registro incompleto no castiga el
+sueldo. El descuento nunca supera el salario básico del período.
 
 ### Las dos cifras que nunca hay que confundir
 
 | | Qué es | Comparado con el devengado |
 |---|---|---|
 | **Neto a pagar** | lo que recibe la persona: devengado − deducciones | **menor** |
-| **Costo para la empresa** | devengado × (1 + factor prestacional) | **mayor** |
+| **Costo para la empresa** | devengado + carga prestacional (IBC × factor derivado) | **mayor** |
 
 La hoja de costos se lleva el **costo-empresa**, nunca el neto. Las dos se muestran en columnas
 separadas en la liquidación, y en cada orden se ve el costo con y sin factor lado a lado.
@@ -191,6 +298,25 @@ separadas en la liquidación, y en cada orden se ve el costo con y sin factor la
 El interruptor `mod_con_factor_prestacional` (Configuración, encendido por defecto) decide cuál de
 las dos cifras entra a la hoja de costos. Encendido: el costo-empresa de la hora, que es lo que
 recomienda la contabilidad de costos. Apagado: solo el salario puro, si el ejercicio lo pide así.
+
+
+### Con qué tarifa se costea una hora
+
+`tarifa_mod_desde` (Configuración) decide de dónde sale el precio de una hora imputada a una orden:
+
+| Modo | Fórmula | Cuándo |
+|---|---|---|
+| `valor_hora` *(por defecto)* | `salario ÷ horas_mes × (1 + factor)` | Rápido, no necesita la nómina liquidada. Deja por fuera el auxilio y cualquier devengado que no sea salario. |
+| `liquidacion` | `costo_empresa del período ÷ horas de la jornada` | Lo que de verdad costó una hora ese mes, todo adentro. Es lo que piden casi todos los talleres. |
+
+En modo `liquidacion` el factor **no** se vuelve a aplicar: la tarifa ya lo trae, y aplicarlo sería
+cobrarlo dos veces. Se divide entre las horas de la **jornada**, no entre las imputadas, y eso es a
+propósito: una hora no cuesta más porque la persona haya estado quieta media jornada. Lo que pasa es
+que esas horas no las absorbe ninguna orden — y esa diferencia, medida y visible, es el **tiempo
+ocioso**. Si alguien no tiene nómina liquidada, el motor cae al valor hora y lo dice en una alerta.
+
+Una `tarifa_hora` escrita en la asignación manda sobre las dos: es la válvula de escape para forzar
+una tarifa en un ejercicio.
 
 ### Sin doble conteo
 
@@ -243,6 +369,21 @@ simplificación: una orden que cruza dos meses cae entera en el mes en que termi
 **Guarda:** si el nivel de actividad del período es 0, no hay tasa. En vez de dividir por cero, la
 tasa queda en 0 marcada como inválida, nada se reparte y las hojas de esas órdenes se quedan en
 borrador diciendo por qué.
+
+
+**La capacidad normal.** `nivel_actividad_normal` (Configuración, en 0 por defecto) cambia el
+divisor:
+
+```
+en 0     tasa = CIF ÷ actividad REAL del mes      → todo se absorbe, variación = 0
+con 1050 tasa = CIF ÷ 1.050                        → tasa PREDETERMINADA
+```
+
+Con un número, la tasa deja de depender de qué tan ocupada estuvo la planta: un mes flojo no encarece
+cada unidad. El precio de eso es que los CIF de la capacidad que no se usó no los absorbe nadie y
+quedan **subaplicados** — visibles en la variación, y es justo lo que casi todos los talleres piden
+calcular. Va en la unidad de la base elegida, así que si se cambia la base hay que volver a
+escribirla.
 
 ### Incurridos vs. aplicados
 
@@ -351,3 +492,34 @@ utilidad.
 Cloudflare Workers como sitio estático, igual que `sistema-jacobo`. La config va versionada en
 `wrangler.jsonc`. No hay backend ni base de datos: es HTML, JS y los JSON de `data/` metidos dentro
 del bundle.
+
+### Secretos y costos
+
+**No hay ninguna API key en este repositorio, y no puede haberla**, porque la app no tiene con quién
+hablar: no hay backend, no hay base de datos y no sale una sola petición a internet en tiempo de
+ejecución. Los datos viven en el `localStorage` del navegador (claves `costos:*`) y las semillas
+están metidas dentro del bundle.
+
+Lo que se verificó, y cómo repetirlo:
+
+| Qué | Comando |
+|---|---|
+| No hay patrones de clave en el código | `grep -rniE "sk-\|AIza\|ghp_\|api[_-]?key\|secret\|token" src/ data/` |
+| Tampoco en el historial de git | `git log --all -p \| grep -niE "api[_-]?key\|secret"` |
+| La app no llama a ninguna red | `grep -rnE "fetch\(\|XMLHttpRequest\|axios\|WebSocket" src/` |
+| No usa variables de entorno | `grep -rn "import.meta.env\|process.env" src/` |
+| El deploy no lleva secretos ni bindings | `npm run deploy:dry` → **«No bindings found»** |
+
+El `.gitignore` bloquea `.env`, `.env.*`, `*.key` y `*.pem` **por prevención**: hoy no hay ninguno,
+pero el repositorio es público y si algún día se agrega uno tiene que ser imposible subirlo por
+accidente.
+
+**Sobre la plata.** El plan Free de Cloudflare Workers no tiene facturación por exceso: cuando se
+pasa un límite devuelve un error, no una cuenta de cobro. Y este sitio sirve **solo archivos
+estáticos**, cuyas peticiones son gratis e ilimitadas — el script del Worker ni siquiera corre. Para
+que esto llegara a costar algo habría que entrar a la cuenta y cambiarse a un plan pago a propósito.
+`observability` quedó apagado en `wrangler.jsonc` porque no registraría nada útil en un sitio
+estático.
+
+> Los límites y los planes de Cloudflare cambian: antes de confiar en esto, miralo en tu panel
+> (Workers & Pages → Plans) y confirmá que la cuenta siga en **Free**.

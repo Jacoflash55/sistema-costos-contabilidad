@@ -17,7 +17,14 @@ import {
 import type { Columna } from '../../components/ui'
 import { useEstado } from '../../contexto'
 import { cantidad as fmtCantidad, cop, copPreciso } from '../../lib/formato'
-import { ETIQUETA_HORA, TIPOS_HORA, recargoDe, usaFactorEnMOD, valorHora } from '../../lib/nomina'
+import {
+  ETIQUETA_HORA,
+  TIPOS_HORA,
+  factorPrestacionalDe,
+  recargoDe,
+  usaFactorEnMOD,
+  valorHora,
+} from '../../lib/nomina'
 import type { ID, LineaMODOrden, OrdenProduccion, TipoHora } from '../../lib/tipos'
 
 function hoyISO(): string {
@@ -64,7 +71,8 @@ export function PanelManoObra({
   const vh = trabajador ? valorHora(trabajador, parametros) : 0
   const recargo = recargoDe(tipoHora, parametros)
   const previoSalario = horas * vh * recargo
-  const previoEmpresa = previoSalario * (1 + parametros.factor_prestacional)
+  const factorTrabajador = trabajador ? factorPrestacionalDe(trabajador, parametros) : 0
+  const previoEmpresa = previoSalario * (1 + factorTrabajador)
 
   const guardar = () => {
     if (!trabajador) return setError('Elegí un trabajador directo.')
@@ -180,7 +188,7 @@ export function PanelManoObra({
           etiqueta="Costo empresa"
           valor={cop(mo?.total_con_factor ?? 0)}
           tamano="sm"
-          pie={`× ${(1 + parametros.factor_prestacional).toLocaleString('es-CO')}`}
+          pie={mo && mo.total_salario > 0 ? `× ${(mo.total_con_factor / mo.total_salario).toLocaleString('es-CO', { maximumFractionDigits: 4 })}` : 'Con prestaciones'}
         />
         <Cifra
           etiqueta="A la hoja de costos"

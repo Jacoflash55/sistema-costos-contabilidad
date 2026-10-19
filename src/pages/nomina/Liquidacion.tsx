@@ -15,7 +15,7 @@ import {
 import type { Columna, Tono } from '../../components/ui'
 import { useEstado } from '../../contexto'
 import { cantidad as fmtCantidad, cop, copPreciso, pct } from '../../lib/formato'
-import { ETIQUETA_HORA } from '../../lib/nomina'
+import { ETIQUETA_GRUPO, ETIQUETA_HORA, factorGlobal } from '../../lib/nomina'
 import type { ClasificacionMO, ID, Liquidacion as Liq, PeriodoNomina } from '../../lib/tipos'
 
 const TONO_CLASIFICACION: Record<ClasificacionMO, Tono> = {
@@ -164,7 +164,8 @@ export function Liquidacion({
   ]
 
   const detalle = liquidaciones.find((l) => l.trabajador_id === abierta)
-  const factor = config.parametros.factor_prestacional
+  /** El factor que se muestra arriba es el de referencia: cada persona tiene el suyo. */
+  const factorRef = factorGlobal(config.parametros)
 
   return (
     <div className="space-y-5">
@@ -197,7 +198,7 @@ export function Liquidacion({
             valor={cop(resumen?.total_costo_empresa ?? 0)}
             tono="acento"
             tamano="sm"
-            pie={`Devengado × ${(1 + factor).toLocaleString('es-CO')}`}
+            pie={`Devengado + aportes · factor de referencia ${pct(factorRef * 100, 2)}`}
           />
         </Rejilla>
       </Tarjeta>
@@ -205,7 +206,7 @@ export function Liquidacion({
       <Aviso tono="acento" titulo="Las dos cifras no son la misma, y ninguna sustituye a la otra">
         El <strong>neto a pagar</strong> es lo que recibe la persona: devengado menos deducciones, así
         que es <em>menor</em> que el devengado. El <strong>costo para la empresa</strong> es devengado
-        × (1 + {factor.toLocaleString('es-CO')}), así que es <em>mayor</em>. El que entra a la hoja de
+        más los aportes del empleador sobre el IBC, así que es <em>mayor</em>. El que entra a la hoja de
         costos de una orden es el costo-empresa, nunca el neto.
       </Aviso>
 
@@ -320,6 +321,47 @@ export function Liquidacion({
             {/* horas */}
             <div>
               <p className="mb-2 text-xs font-medium uppercase tracking-wider text-tenue">Horas</p>
+
+              {detalle.modalidad === 'mensual' && (
+                <div className="mb-3 rounded-lg border border-borde bg-panel-alto p-3 text-sm">
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
+                    <span className="text-suave">Horas esperadas en el período</span>
+                    <span className="cifra tabular-nums">
+                      {fmtCantidad(detalle.horas_esperadas, 0)} h
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
+                    <span className="text-suave">Horas trabajadas</span>
+                    <span className="cifra tabular-nums">
+                      {fmtCantidad(detalle.horas_por_tipo.ordinaria, 0)} h
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-baseline justify-between gap-3">
+                    <span className="text-suave">Horas descontadas</span>
+                    <span
+                      className={`cifra tabular-nums ${detalle.horas_descontadas > 0 ? 'text-aviso' : ''}`}
+                    >
+                      {fmtCantidad(detalle.horas_descontadas, 0)} h
+                    </span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-baseline justify-between gap-3 border-t border-borde pt-1 font-semibold">
+                    <span>Descuento del salario</span>
+                    <span
+                      className={`cifra tabular-nums ${detalle.descuento_por_horas > 0 ? 'text-negativo' : ''}`}
+                    >
+                      {detalle.descuento_por_horas > 0
+                        ? `−${cop(detalle.descuento_por_horas).slice(1)}`
+                        : cop(0)}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-tenue">
+                    {detalle.descuento_por_horas > 0
+                      ? 'El salario mensual bajó en proporción a las horas que no se trabajaron.'
+                      : 'Sin descuentos: el salario del mes entra completo.'}
+                  </p>
+                </div>
+              )}
+
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-borde text-xs uppercase tracking-wider text-tenue">
@@ -413,7 +455,7 @@ export function Liquidacion({
                 <Fila etiqueta="Neto a pagar" valor={cop(detalle.neto_pagar)} fuerte clase="text-positivo" />
                 <div className="pt-2">
                   <Fila
-                    etiqueta={`Carga prestacional (${pct(factor * 100, 0)})`}
+                    etiqueta={`Carga prestacional (${pct(detalle.factor_prestacional * 100, 3)})`}
                     valor={cop(detalle.carga_prestacional)}
                     clase="text-tenue"
                   />
@@ -423,9 +465,65 @@ export function Liquidacion({
                     fuerte
                     clase="text-acento"
                   />
+                  <p className="mt-1 text-xs text-tenue">
+                    = devengado + los aportes de abajo. El IBC fue{' '}
+                    {cop(detalle.base_prestacional)}.
+                  </p>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* ---------- aportes del empleador ---------- */}
+          <div className="mt-5 border-t border-borde pt-4">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-tenue">
+              Aportes del empleador · IBC {cop(detalle.base_prestacional)}
+            </p>
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-borde text-xs uppercase tracking-wider text-tenue">
+                  <th className="py-1.5 text-left">Concepto</th>
+                  <th className="py-1.5 text-left">Grupo</th>
+                  <th className="py-1.5 text-right">%</th>
+                  <th className="py-1.5 text-right">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detalle.aportes.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-4 text-center text-tenue">
+                      Sin aportes configurados.
+                    </td>
+                  </tr>
+                )}
+                {detalle.aportes.map((a) => (
+                  <tr key={a.id} className="border-b border-borde/60">
+                    <td className="py-1.5">
+                      {a.nombre}
+                      {a.origen === 'trabajador' && (
+                        <span className="ml-2 text-xs text-aviso">propio</span>
+                      )}
+                    </td>
+                    <td className="py-1.5 text-xs text-suave">{ETIQUETA_GRUPO[a.grupo]}</td>
+                    <td className="cifra py-1.5 text-right tabular-nums">{pct(a.pct, 3)}</td>
+                    <td className="cifra py-1.5 text-right tabular-nums">{cop(a.monto)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-borde-fuerte font-semibold">
+                  <td className="py-1.5 text-xs uppercase tracking-wider" colSpan={2}>
+                    Total de aportes
+                  </td>
+                  <td className="cifra py-1.5 text-right tabular-nums">
+                    {pct(detalle.factor_prestacional * 100, 3)}
+                  </td>
+                  <td className="cifra py-1.5 text-right tabular-nums">
+                    {cop(detalle.carga_prestacional)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </Tarjeta>
       )}

@@ -22,8 +22,19 @@ import type {
 
 const PARAMETROS: ParametrosCalculo = {
   horas_mes: 240,
-  recargos: { extra_diurna: 1.25, extra_nocturna: 1.75, recargo_nocturno: 0.35, dominical: 0.75 },
-  factor_prestacional: 0.5,
+  recargos: {
+    extra_diurna: 1.25,
+    extra_nocturna: 1.75,
+    recargo_nocturno: 0.35,
+    dominical: 0.9,
+    recargo_nocturno_dominical: 1.25,
+    extra_diurna_dominical: 2.15,
+    extra_nocturna_dominical: 2.65,
+  },
+  aportes_empleador: [
+    { id: 'todo', grupo: 'prestaciones', nombre: 'Carga prestacional', pct: 50, activo: true, cuando_corresponda: false },
+  ],
+  arl_clases: { I: 0, II: 0, III: 0, IV: 0, V: 0 },
   mod_con_factor_prestacional: true,
   metodo_inventario: 'promedio_ponderado',
   base_cif: 'unidades',
@@ -402,5 +413,97 @@ describe('calcularCIF sobre varios períodos', () => {
   it('cada orden recibe el CIF de SU período', () => {
     expect(porOrden.op1.importe).toBe(1_000_000)
     expect(porOrden.op2.importe).toBe(2_000_000)
+  })
+})
+
+// =====================================================================
+// LA CAPACIDAD NORMAL: tasa predeterminada y CIF subaplicados
+// =====================================================================
+
+describe('nivel_actividad_normal', () => {
+  const CATEGORIAS_SIMPLES: CategoriaCIF[] = [
+    { id: 'c1', nombre: 'Arriendo de planta', naturaleza: 'cif', comportamiento: 'fijo', base: null, activa: true },
+  ]
+  const CONCEPTOS_SIMPLES: CIF[] = [
+    { id: 'x1', fecha: '2026-03-31', periodo: '2026-03', categoria_id: 'c1', concepto: 'Arriendo', monto: 1_000_000, documento: '', presupuestado: false },
+  ]
+
+  /** Dos ordenes de 40 y 60 unidades: 100 reales contra una capacidad de 125. */
+  const ORDENES_SIMPLES: OrdenProduccion[] = [
+    { id: 'o1', numero: 'OP-1', producto_id: 'p1', cantidad_programada: 40, cantidad_terminada: 40, estado: 'terminada', fecha_inicio: '2026-03-01', fecha_fin: '2026-03-20' },
+    { id: 'o2', numero: 'OP-2', producto_id: 'p1', cantidad_programada: 60, cantidad_terminada: 60, estado: 'terminada', fecha_inicio: '2026-03-01', fecha_fin: '2026-03-20' },
+  ]
+
+  const correr = (capacidad: number | undefined) =>
+    tasaDelPeriodo(
+      '2026-03',
+      CONCEPTOS_SIMPLES,
+      CATEGORIAS_SIMPLES,
+      ORDENES_SIMPLES,
+      { ...PARAMETROS, base_cif: 'unidades', nivel_actividad_normal: capacidad },
+      contexto({}),
+    )
+
+  it('sin capacidad, divide entre la actividad real y no sobra nada', () => {
+    const { tasa } = correr(undefined)
+
+    expect(tasa.nivel_actividad).toBe(100)
+    expect(tasa.nivel_divisor).toBe(100)
+    expect(tasa.desde_capacidad).toBe(false)
+    expect(tasa.tasa).toBe(10_000)
+    expect(tasa.cif_aplicado).toBe(1_000_000)
+    expect(tasa.variacion).toBe(0)
+  })
+
+  it('con capacidad 125 la tasa baja y quedan CIF subaplicados', () => {
+    const { tasa, porOrden } = correr(125)
+
+    expect(tasa.nivel_actividad).toBe(100)
+    expect(tasa.nivel_divisor).toBe(125)
+    expect(tasa.desde_capacidad).toBe(true)
+    // 1.000.000 / 125 = 8.000, no 10.000
+    expect(tasa.tasa).toBe(8_000)
+
+    expect(porOrden.o1.importe).toBe(320_000)
+    expect(porOrden.o2.importe).toBe(480_000)
+
+    expect(tasa.cif_aplicado).toBe(800_000)
+    // las 25 unidades de capacidad que no se usaron, a 8.000
+    expect(tasa.variacion).toBe(200_000)
+  })
+
+  it('un mes flojo no encarece cada unidad: esa es la gracia', () => {
+    const flojo = correr(125)
+    // la misma capacidad, pero produciendo la mitad
+    const mitad = tasaDelPeriodo(
+      '2026-03',
+      CONCEPTOS_SIMPLES,
+      CATEGORIAS_SIMPLES,
+      [ORDENES_SIMPLES[0]],
+      { ...PARAMETROS, base_cif: 'unidades', nivel_actividad_normal: 125 },
+      contexto({}),
+    )
+
+    expect(mitad.tasa.tasa).toBe(flojo.tasa.tasa)
+    // pero se absorbe mucho menos y la variación crece
+    expect(mitad.tasa.variacion).toBe(1_000_000 - 40 * 8_000)
+  })
+
+  it('en 0 se comporta como si no estuviera', () => {
+    expect(correr(0).tasa.desde_capacidad).toBe(false)
+    expect(correr(0).tasa.tasa).toBe(10_000)
+  })
+
+  it('sin actividad real no hay tasa, aunque haya capacidad', () => {
+    const { tasa } = tasaDelPeriodo(
+      '2026-03',
+      CONCEPTOS_SIMPLES,
+      CATEGORIAS_SIMPLES,
+      [],
+      { ...PARAMETROS, base_cif: 'unidades', nivel_actividad_normal: 125 },
+      contexto({}),
+    )
+    expect(tasa.valida).toBe(false)
+    expect(tasa.tasa).toBe(0)
   })
 })

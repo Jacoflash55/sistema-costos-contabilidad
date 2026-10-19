@@ -18,16 +18,100 @@
         "extra_diurna": 1.25,
         "extra_nocturna": 1.75,
         "recargo_nocturno": 0.35,
-        "dominical": 0.75
+        "dominical": 0.9,
+        "recargo_nocturno_dominical": 1.25,
+        "extra_diurna_dominical": 2.15,
+        "extra_nocturna_dominical": 2.65
       },
-      "factor_prestacional": 0.53766,
       "mod_con_factor_prestacional": true,
       "metodo_inventario": "promedio_ponderado",
       "base_cif": "horas_mo",
       "cif_tasa_desde": "real",
       "metodo_margen": "sobre_precio",
       "margen_por_defecto_pct": 40,
-      "redondeo_precio_multiplo": 1
+      "redondeo_precio_multiplo": 1,
+      "aportes_empleador": [
+        {
+          "id": "cesantias",
+          "grupo": "prestaciones",
+          "nombre": "Cesantías",
+          "pct": 8.33,
+          "activo": true,
+          "cuando_corresponda": false
+        },
+        {
+          "id": "prima",
+          "grupo": "prestaciones",
+          "nombre": "Prima de servicios",
+          "pct": 8.33,
+          "activo": true,
+          "cuando_corresponda": false
+        },
+        {
+          "id": "intereses_cesantias",
+          "grupo": "prestaciones",
+          "nombre": "Intereses a las cesantías",
+          "pct": 1,
+          "activo": true,
+          "cuando_corresponda": false
+        },
+        {
+          "id": "vacaciones",
+          "grupo": "prestaciones",
+          "nombre": "Vacaciones",
+          "pct": 4.17,
+          "activo": true,
+          "cuando_corresponda": false
+        },
+        {
+          "id": "pension_empleador",
+          "grupo": "seguridad_social",
+          "nombre": "Pensión (empleador)",
+          "pct": 12,
+          "activo": true,
+          "cuando_corresponda": false
+        },
+        {
+          "id": "salud_empleador",
+          "grupo": "seguridad_social",
+          "nombre": "Salud (empleador)",
+          "pct": 8.5,
+          "activo": true,
+          "cuando_corresponda": true
+        },
+        {
+          "id": "caja",
+          "grupo": "parafiscales",
+          "nombre": "Caja de compensación",
+          "pct": 4,
+          "activo": true,
+          "cuando_corresponda": false
+        },
+        {
+          "id": "sena",
+          "grupo": "parafiscales",
+          "nombre": "SENA",
+          "pct": 2,
+          "activo": true,
+          "cuando_corresponda": true
+        },
+        {
+          "id": "icbf",
+          "grupo": "parafiscales",
+          "nombre": "ICBF",
+          "pct": 3,
+          "activo": true,
+          "cuando_corresponda": true
+        }
+      ],
+      "arl_clases": {
+        "I": 0.522,
+        "II": 1.044,
+        "III": 2.436,
+        "IV": 4.35,
+        "V": 6.96
+      },
+      "prorratear_ordinarias": false
     }
   },
   "nomina": {
@@ -46,7 +130,8 @@
         "tiene_auxilio_transporte": false,
         "tipo_contrato": "termino_indefinido",
         "fecha_ingreso": "2026-01-01",
-        "activo": true
+        "activo": true,
+        "clase_riesgo": "III"
       },
       {
         "id": "tb",
@@ -62,7 +147,8 @@
         "tiene_auxilio_transporte": false,
         "tipo_contrato": "termino_indefinido",
         "fecha_ingreso": "2026-01-01",
-        "activo": true
+        "activo": true,
+        "clase_riesgo": "III"
       }
     ],
     "periodos": [
@@ -76,8 +162,22 @@
       }
     ],
     "registros_horas": [
-      { "id": "rh1", "trabajador_id": "ta", "periodo_id": "per1", "fecha": "2026-09-30", "tipo_hora": "ordinaria", "horas": 240 },
-      { "id": "rh2", "trabajador_id": "tb", "periodo_id": "per1", "fecha": "2026-09-30", "tipo_hora": "ordinaria", "horas": 240 }
+      {
+        "id": "rh1",
+        "trabajador_id": "ta",
+        "periodo_id": "per1",
+        "fecha": "2026-09-30",
+        "tipo_hora": "ordinaria",
+        "horas": 240
+      },
+      {
+        "id": "rh2",
+        "trabajador_id": "tb",
+        "periodo_id": "per1",
+        "fecha": "2026-09-30",
+        "tipo_hora": "ordinaria",
+        "horas": 240
+      }
     ],
     "novedades": [],
     "conceptos": [
@@ -136,16 +236,106 @@
     ],
     "compras": [],
     "movimientos": [
-      { "id": "k1", "fecha": "2026-09-01", "materia_prima_id": "mad", "tipo": "entrada_compra", "concepto": "Compra 1", "documento": "Compra 1", "cantidad": 200, "costo_unitario": 45000 },
-      { "id": "k2", "fecha": "2026-09-01", "materia_prima_id": "met", "tipo": "entrada_compra", "concepto": "Compra 1", "documento": "Compra 1", "cantidad": 50, "costo_unitario": 60000 },
-      { "id": "k3", "fecha": "2026-09-04", "materia_prima_id": "mad", "tipo": "entrada_compra", "concepto": "Compra 2", "documento": "Compra 2", "cantidad": 100, "costo_unitario": 47000 },
-      { "id": "k4", "fecha": "2026-09-04", "materia_prima_id": "met", "tipo": "entrada_compra", "concepto": "Compra 2", "documento": "Compra 2", "cantidad": 50, "costo_unitario": 59800 },
-      { "id": "k5", "fecha": "2026-09-08", "materia_prima_id": "mad", "tipo": "entrada_compra", "concepto": "Compra 3", "documento": "Compra 3", "cantidad": 50, "costo_unitario": 46100 },
-      { "id": "k6", "fecha": "2026-09-08", "materia_prima_id": "met", "tipo": "entrada_compra", "concepto": "Compra 3", "documento": "Compra 3", "cantidad": 70, "costo_unitario": 60050 },
-      { "id": "k7", "fecha": "2026-09-12", "materia_prima_id": "mad", "tipo": "entrada_compra", "concepto": "Compra 4", "documento": "Compra 4", "cantidad": 150, "costo_unitario": 45400 },
-      { "id": "k8", "fecha": "2026-09-12", "materia_prima_id": "met", "tipo": "entrada_compra", "concepto": "Compra 4", "documento": "Compra 4", "cantidad": 100, "costo_unitario": 60400 },
-      { "id": "k9", "fecha": "2026-09-16", "materia_prima_id": "mad", "tipo": "entrada_compra", "concepto": "Compra 5", "documento": "Compra 5", "cantidad": 200, "costo_unitario": 45350 },
-      { "id": "k10", "fecha": "2026-09-16", "materia_prima_id": "met", "tipo": "entrada_compra", "concepto": "Compra 5", "documento": "Compra 5", "cantidad": 200, "costo_unitario": 61000 }
+      {
+        "id": "k1",
+        "fecha": "2026-09-01",
+        "materia_prima_id": "mad",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 1",
+        "documento": "Compra 1",
+        "cantidad": 200,
+        "costo_unitario": 45000
+      },
+      {
+        "id": "k2",
+        "fecha": "2026-09-01",
+        "materia_prima_id": "met",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 1",
+        "documento": "Compra 1",
+        "cantidad": 50,
+        "costo_unitario": 60000
+      },
+      {
+        "id": "k3",
+        "fecha": "2026-09-04",
+        "materia_prima_id": "mad",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 2",
+        "documento": "Compra 2",
+        "cantidad": 100,
+        "costo_unitario": 47000
+      },
+      {
+        "id": "k4",
+        "fecha": "2026-09-04",
+        "materia_prima_id": "met",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 2",
+        "documento": "Compra 2",
+        "cantidad": 50,
+        "costo_unitario": 59800
+      },
+      {
+        "id": "k5",
+        "fecha": "2026-09-08",
+        "materia_prima_id": "mad",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 3",
+        "documento": "Compra 3",
+        "cantidad": 50,
+        "costo_unitario": 46100
+      },
+      {
+        "id": "k6",
+        "fecha": "2026-09-08",
+        "materia_prima_id": "met",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 3",
+        "documento": "Compra 3",
+        "cantidad": 70,
+        "costo_unitario": 60050
+      },
+      {
+        "id": "k7",
+        "fecha": "2026-09-12",
+        "materia_prima_id": "mad",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 4",
+        "documento": "Compra 4",
+        "cantidad": 150,
+        "costo_unitario": 45400
+      },
+      {
+        "id": "k8",
+        "fecha": "2026-09-12",
+        "materia_prima_id": "met",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 4",
+        "documento": "Compra 4",
+        "cantidad": 100,
+        "costo_unitario": 60400
+      },
+      {
+        "id": "k9",
+        "fecha": "2026-09-16",
+        "materia_prima_id": "mad",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 5",
+        "documento": "Compra 5",
+        "cantidad": 200,
+        "costo_unitario": 45350
+      },
+      {
+        "id": "k10",
+        "fecha": "2026-09-16",
+        "materia_prima_id": "met",
+        "tipo": "entrada_compra",
+        "concepto": "Compra 5",
+        "documento": "Compra 5",
+        "cantidad": 200,
+        "costo_unitario": 61000
+      }
     ]
   },
   "produccion": {
@@ -170,8 +360,18 @@
         "horas_maquina_estandar": 0,
         "vigente": true,
         "items": [
-          { "materia_prima_id": "mad", "cantidad": 3, "unidad": "unidad", "desperdicio_pct": 0 },
-          { "materia_prima_id": "met", "cantidad": 2, "unidad": "unidad", "desperdicio_pct": 0 }
+          {
+            "materia_prima_id": "mad",
+            "cantidad": 3,
+            "unidad": "unidad",
+            "desperdicio_pct": 0
+          },
+          {
+            "materia_prima_id": "met",
+            "cantidad": 2,
+            "unidad": "unidad",
+            "desperdicio_pct": 0
+          }
         ]
       }
     ],
@@ -190,14 +390,68 @@
       }
     ],
     "consumos": [
-      { "id": "s1a", "orden_id": "op1", "materia_prima_id": "mad", "fecha": "2026-09-09", "documento": "Salida 1 (tras compra 3)", "cantidad": 300, "unidad": "unidad", "costo_unitario": null },
-      { "id": "s1b", "orden_id": "op1", "materia_prima_id": "met", "fecha": "2026-09-09", "documento": "Salida 1 (tras compra 3)", "cantidad": 100, "unidad": "unidad", "costo_unitario": null },
-      { "id": "s2a", "orden_id": "op1", "materia_prima_id": "mad", "fecha": "2026-09-17", "documento": "Salida 2 (tras compra 5)", "cantidad": 300, "unidad": "unidad", "costo_unitario": null },
-      { "id": "s2b", "orden_id": "op1", "materia_prima_id": "met", "fecha": "2026-09-17", "documento": "Salida 2 (tras compra 5)", "cantidad": 300, "unidad": "unidad", "costo_unitario": null }
+      {
+        "id": "s1a",
+        "orden_id": "op1",
+        "materia_prima_id": "mad",
+        "fecha": "2026-09-09",
+        "documento": "Salida 1 (tras compra 3)",
+        "cantidad": 300,
+        "unidad": "unidad",
+        "costo_unitario": null
+      },
+      {
+        "id": "s1b",
+        "orden_id": "op1",
+        "materia_prima_id": "met",
+        "fecha": "2026-09-09",
+        "documento": "Salida 1 (tras compra 3)",
+        "cantidad": 100,
+        "unidad": "unidad",
+        "costo_unitario": null
+      },
+      {
+        "id": "s2a",
+        "orden_id": "op1",
+        "materia_prima_id": "mad",
+        "fecha": "2026-09-17",
+        "documento": "Salida 2 (tras compra 5)",
+        "cantidad": 300,
+        "unidad": "unidad",
+        "costo_unitario": null
+      },
+      {
+        "id": "s2b",
+        "orden_id": "op1",
+        "materia_prima_id": "met",
+        "fecha": "2026-09-17",
+        "documento": "Salida 2 (tras compra 5)",
+        "cantidad": 300,
+        "unidad": "unidad",
+        "costo_unitario": null
+      }
     ],
     "asignaciones_mo": [
-      { "id": "am1", "orden_id": "op1", "trabajador_id": "ta", "periodo_id": "per1", "fecha": "2026-09-25", "tipo_hora": "ordinaria", "horas": 200, "tarifa_hora": null },
-      { "id": "am2", "orden_id": "op1", "trabajador_id": "tb", "periodo_id": "per1", "fecha": "2026-09-25", "tipo_hora": "ordinaria", "horas": 175, "tarifa_hora": null }
+      {
+        "id": "am1",
+        "orden_id": "op1",
+        "trabajador_id": "ta",
+        "periodo_id": "per1",
+        "fecha": "2026-09-25",
+        "tipo_hora": "ordinaria",
+        "horas": 200,
+        "tarifa_hora": null
+      },
+      {
+        "id": "am2",
+        "orden_id": "op1",
+        "trabajador_id": "tb",
+        "periodo_id": "per1",
+        "fecha": "2026-09-25",
+        "tipo_hora": "ordinaria",
+        "horas": 175,
+        "tarifa_hora": null
+      }
     ],
     "otros_directos": [],
     "hojas": [
@@ -218,19 +472,108 @@
   },
   "cif": {
     "categorias": [
-      { "id": "cat_arriendo", "nombre": "Arrendamiento del área productiva", "naturaleza": "cif", "comportamiento": "fijo", "base": null, "activa": true },
-      { "id": "cat_seguridad", "nombre": "Seguridad y vigilancia de planta", "naturaleza": "cif", "comportamiento": "fijo", "base": null, "activa": true },
-      { "id": "cat_depreciacion", "nombre": "Depreciación de maquinaria", "naturaleza": "cif", "comportamiento": "fijo", "base": null, "activa": true },
-      { "id": "cat_seguros", "nombre": "Seguros de fábrica", "naturaleza": "cif", "comportamiento": "fijo", "base": null, "activa": true },
-      { "id": "cat_administracion", "nombre": "Administración", "naturaleza": "administracion", "comportamiento": "fijo", "base": null, "activa": true }
+      {
+        "id": "cat_arriendo",
+        "nombre": "Arrendamiento del área productiva",
+        "naturaleza": "cif",
+        "comportamiento": "fijo",
+        "base": null,
+        "activa": true
+      },
+      {
+        "id": "cat_seguridad",
+        "nombre": "Seguridad y vigilancia de planta",
+        "naturaleza": "cif",
+        "comportamiento": "fijo",
+        "base": null,
+        "activa": true
+      },
+      {
+        "id": "cat_depreciacion",
+        "nombre": "Depreciación de maquinaria",
+        "naturaleza": "cif",
+        "comportamiento": "fijo",
+        "base": null,
+        "activa": true
+      },
+      {
+        "id": "cat_seguros",
+        "nombre": "Seguros de fábrica",
+        "naturaleza": "cif",
+        "comportamiento": "fijo",
+        "base": null,
+        "activa": true
+      },
+      {
+        "id": "cat_administracion",
+        "nombre": "Administración",
+        "naturaleza": "administracion",
+        "comportamiento": "fijo",
+        "base": null,
+        "activa": true
+      }
     ],
     "cif": [
-      { "id": "x1", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_arriendo", "concepto": "Arrendamiento de la fábrica", "monto": 5000000, "documento": "", "presupuestado": false },
-      { "id": "x2", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_seguridad", "concepto": "Alarma fábrica", "monto": 70000, "documento": "", "presupuestado": false },
-      { "id": "x3", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_depreciacion", "concepto": "Depreciación maquinaria", "monto": 850000, "documento": "", "presupuestado": false },
-      { "id": "x4", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_seguros", "concepto": "Seguro fábrica", "monto": 650000, "documento": "", "presupuestado": false },
-      { "id": "x5", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_administracion", "concepto": "Software administrativo", "monto": 200000, "documento": "", "presupuestado": false },
-      { "id": "x6", "fecha": "2026-09-30", "periodo": "2026-09", "categoria_id": "cat_administracion", "concepto": "Arrendamiento oficina administrativa", "monto": 3500000, "documento": "", "presupuestado": false }
+      {
+        "id": "x1",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_arriendo",
+        "concepto": "Arrendamiento de la fábrica",
+        "monto": 5000000,
+        "documento": "",
+        "presupuestado": false
+      },
+      {
+        "id": "x2",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_seguridad",
+        "concepto": "Alarma fábrica",
+        "monto": 70000,
+        "documento": "",
+        "presupuestado": false
+      },
+      {
+        "id": "x3",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_depreciacion",
+        "concepto": "Depreciación maquinaria",
+        "monto": 850000,
+        "documento": "",
+        "presupuestado": false
+      },
+      {
+        "id": "x4",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_seguros",
+        "concepto": "Seguro fábrica",
+        "monto": 650000,
+        "documento": "",
+        "presupuestado": false
+      },
+      {
+        "id": "x5",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_administracion",
+        "concepto": "Software administrativo",
+        "monto": 200000,
+        "documento": "",
+        "presupuestado": false
+      },
+      {
+        "id": "x6",
+        "fecha": "2026-09-30",
+        "periodo": "2026-09",
+        "categoria_id": "cat_administracion",
+        "concepto": "Arrendamiento oficina administrativa",
+        "monto": 3500000,
+        "documento": "",
+        "presupuestado": false
+      }
     ]
   },
   "comercial": {

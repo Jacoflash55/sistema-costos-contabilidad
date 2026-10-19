@@ -17,7 +17,14 @@
  *   valor de las horas    = Σ (horas_tipo × valor_hora × recargo_tipo)
  *   total_devengado       = salario_base_periodo + extras_y_recargos + bonificaciones
  *   neto                  = max(0, total_devengado − deducciones)
- *   costo_MO_empresa      = total_devengado × (1 + factor_prestacional)
+ *
+ *   IBC                   = devengado SALARIAL (salario + extras + recargos y
+ *                           los devengados marcados como prestacionales). El
+ *                           auxilio de transporte NO entra.
+ *   carga_prestacional    = Σ (IBC × pct de cada línea activa del trabajador)
+ *   costo_MO_empresa      = total_devengado + carga_prestacional
+ *
+ *   factor_prestacional   = Σ pct de las líneas activas / 100   ← DERIVADO
  *   costo_MOD_orden       = Σ (horas_imputadas × valor_hora × recargo [× factor])
  *
  * ---------------------------------------------------------------------
@@ -49,8 +56,11 @@
 
 import type {
   AlertaNomina,
+  AporteEmpleador,
   AsignacionMO,
+  ClaseRiesgoARL,
   ClasificacionMO,
+  LineaAporte,
   ConceptoRemuneracion,
   ID,
   LineaHoras,
@@ -73,13 +83,16 @@ import type {
 // 1. TIPOS DE HORA
 // =====================================================================
 
-/** Las cinco clases de hora que se pagan, mas las ausencias. En orden de tabla. */
+/** Las ocho clases de hora que se pagan, mas las ausencias. En orden de tabla. */
 export const TIPOS_HORA_REGISTRO: readonly TipoHoraRegistro[] = [
   'ordinaria',
   'extra_diurna',
   'extra_nocturna',
   'recargo_nocturno',
   'dominical',
+  'recargo_nocturno_dominical',
+  'extra_diurna_dominical',
+  'extra_nocturna_dominical',
   'ausencia',
 ]
 
@@ -90,6 +103,9 @@ export const TIPOS_HORA: readonly TipoHora[] = [
   'extra_nocturna',
   'recargo_nocturno',
   'dominical',
+  'recargo_nocturno_dominical',
+  'extra_diurna_dominical',
+  'extra_nocturna_dominical',
 ]
 
 export const ETIQUETA_HORA: Record<TipoHoraRegistro, string> = {
@@ -98,7 +114,26 @@ export const ETIQUETA_HORA: Record<TipoHoraRegistro, string> = {
   extra_nocturna: 'Extra nocturnas',
   recargo_nocturno: 'Recargo nocturno',
   dominical: 'Dominicales y festivas',
+  recargo_nocturno_dominical: 'Recargo nocturno dominical',
+  extra_diurna_dominical: 'Extra diurna dominical',
+  extra_nocturna_dominical: 'Extra nocturna dominical',
   ausencia: 'Ausencias',
+}
+
+/**
+ * Si el factor de ese tipo paga la hora ENTERA o solo el recargo encima de la
+ * ordinaria. Lo usa la pantalla para explicarlo; el motor multiplica igual.
+ */
+export const CLASE_RECARGO: Record<TipoHoraRegistro, 'completo' | 'adicional' | 'base'> = {
+  ordinaria: 'base',
+  extra_diurna: 'completo',
+  extra_nocturna: 'completo',
+  recargo_nocturno: 'adicional',
+  dominical: 'adicional',
+  recargo_nocturno_dominical: 'adicional',
+  extra_diurna_dominical: 'completo',
+  extra_nocturna_dominical: 'completo',
+  ausencia: 'base',
 }
 
 export const ETIQUETA_CLASIFICACION: Record<ClasificacionMO, string> = {
@@ -128,6 +163,12 @@ export function recargoDe(tipo: TipoHoraRegistro, parametros: ParametrosCalculo)
       return parametros.recargos.recargo_nocturno
     case 'dominical':
       return parametros.recargos.dominical
+    case 'recargo_nocturno_dominical':
+      return parametros.recargos.recargo_nocturno_dominical
+    case 'extra_diurna_dominical':
+      return parametros.recargos.extra_diurna_dominical
+    case 'extra_nocturna_dominical':
+      return parametros.recargos.extra_nocturna_dominical
   }
 }
 
@@ -155,9 +196,142 @@ export function valorHora(trabajador: Trabajador, parametros: ParametrosCalculo)
   return trabajador.salario_basico / parametros.horas_mes
 }
 
-/** El valor de la hora ya cargado con el factor prestacional. */
+/** El valor de la hora ya cargado con el factor prestacional de esa persona. */
 export function costoHoraCargado(trabajador: Trabajador, parametros: ParametrosCalculo): number {
-  return valorHora(trabajador, parametros) * (1 + parametros.factor_prestacional)
+  return valorHora(trabajador, parametros) * (1 + factorPrestacionalDe(trabajador, parametros))
+}
+
+// =====================================================================
+// 2b. LAS PRESTACIONES, LINEA POR LINEA
+// =====================================================================
+
+/**
+ * Una linea de aporte ya resuelta para un trabajador: con el porcentaje que
+ * de verdad se le aplica y de donde salio.
+ */
+export interface LineaEfectiva {
+  id: string
+  grupo: AporteEmpleador['grupo']
+  nombre: string
+  pct: number
+  activo: boolean
+  cuando_corresponda: boolean
+  /** Si se calcula sobre el IBC mas el auxilio de transporte. */
+  base_con_auxilio: boolean
+  origen: 'global' | 'trabajador'
+}
+
+export const ETIQUETA_GRUPO: Record<AporteEmpleador['grupo'], string> = {
+  prestaciones: 'Prestaciones sociales',
+  seguridad_social: 'Seguridad social (empleador)',
+  parafiscales: 'Parafiscales',
+}
+
+/** El id de la linea sintetica de ARL, que no vive en la lista editable. */
+export const ID_ARL = 'arl'
+
+/**
+ * Las lineas de aporte que de verdad se le aplican a una persona.
+ *
+ * Cada linea global se mezcla con el override de ese trabajador, si lo tiene:
+ * lo que el override no diga se hereda. Por eso cambiar un porcentaje en
+ * Configuracion recalcula a todos los que heredan y deja quietos a los que
+ * tienen override.
+ *
+ * Al final se agrega la linea de ARL, que no se edita en la lista sino que
+ * sale de la clase de riesgo de la persona.
+ */
+export function lineasAporteDe(
+  trabajador: Trabajador,
+  parametros: ParametrosCalculo,
+): LineaEfectiva[] {
+  const out: LineaEfectiva[] = []
+
+  for (const linea of parametros.aportes_empleador ?? []) {
+    const override = trabajador.aportes_override?.[linea.id]
+    out.push({
+      id: linea.id,
+      grupo: linea.grupo,
+      nombre: linea.nombre,
+      pct: override?.pct ?? linea.pct,
+      activo: override?.activo ?? linea.activo,
+      cuando_corresponda: linea.cuando_corresponda,
+      base_con_auxilio: linea.base_con_auxilio === true,
+      origen: override ? 'trabajador' : 'global',
+    })
+  }
+
+  // ARL: sale de la clase de riesgo, no de la lista
+  const arl = parametros.arl_clases?.[trabajador.clase_riesgo]
+  if (arl != null) {
+    const override = trabajador.aportes_override?.[ID_ARL]
+    out.push({
+      id: ID_ARL,
+      grupo: 'seguridad_social',
+      nombre: `ARL clase ${trabajador.clase_riesgo}`,
+      pct: override?.pct ?? arl,
+      activo: override?.activo ?? true,
+      cuando_corresponda: false,
+      // la ARL va sobre el salario, nunca sobre el auxilio
+      base_con_auxilio: false,
+      origen: override ? 'trabajador' : 'global',
+    })
+  }
+
+  return out
+}
+
+/**
+ * EL FACTOR PRESTACIONAL, DERIVADO.
+ *
+ *   factor = (suma de los pct de las lineas activas de esa persona) / 100
+ *
+ * Ya no es un numero que alguien escribe: sale de las lineas, asi que se
+ * puede ver de donde viene cada punto y cambiarlo uno por uno. Con todas las
+ * lineas de la semilla y ARL clase III da 0.53766, o sea que la hora cuesta
+ * un 53,766% mas que el salario puro.
+ *
+ * COMPATIBILIDAD: si `aportes_empleador` viene vacio (una configuracion vieja
+ * guardada en el navegador), se cae al `factor_prestacional` de un solo numero
+ * que se usaba antes. Asi nada deja de calcular de un dia para otro.
+ */
+export function factorPrestacionalDe(
+  trabajador: Trabajador,
+  parametros: ParametrosCalculo,
+): number {
+  if (usaFactorLegado(parametros)) return parametros.factor_prestacional ?? 0
+  return lineasAporteDe(trabajador, parametros)
+    .filter((l) => l.activo)
+    .reduce((s, l) => s + l.pct, 0) / 100
+}
+
+/**
+ * Si hay que calcular con el factor viejo de un solo numero.
+ *
+ * Solo cuando no hay NINGUNA linea configurada y si existe el factor legado.
+ * Se mira `aportes_empleador` y no el resultado de `lineasAporteDe`, porque
+ * esa funcion siempre agrega la linea de ARL y entonces el legado nunca se
+ * activaria.
+ */
+export function usaFactorLegado(parametros: ParametrosCalculo): boolean {
+  return (parametros.aportes_empleador ?? []).length === 0 && parametros.factor_prestacional != null
+}
+
+/**
+ * El factor de una persona «promedio»: el que se ve en Configuracion.
+ *
+ * Usa la clase de ARL que se le pase (por defecto la II) porque el factor
+ * global no es de nadie en concreto: es el que heredan los que no tienen
+ * override, y cada quien lo mueve con su propia clase de riesgo.
+ */
+export function factorGlobal(
+  parametros: ParametrosCalculo,
+  clase: ClaseRiesgoARL = 'II',
+): number {
+  return factorPrestacionalDe(
+    { clase_riesgo: clase, aportes_override: undefined } as Trabajador,
+    parametros,
+  )
 }
 
 // =====================================================================
@@ -178,14 +352,12 @@ export interface EntradaLiquidacion {
 
 /** Suma las horas de cada clase. Las clases sin registros quedan en cero. */
 export function horasPorTipo(horas: readonly RegistroHoras[]): Record<TipoHoraRegistro, number> {
-  const out = {
-    ordinaria: 0,
-    extra_diurna: 0,
-    extra_nocturna: 0,
-    recargo_nocturno: 0,
-    dominical: 0,
-    ausencia: 0,
-  } as Record<TipoHoraRegistro, number>
+  // se arma desde la lista de tipos para que agregar uno nuevo no deje un
+  // `undefined` suelto en el registro
+  const out = Object.fromEntries(TIPOS_HORA_REGISTRO.map((t) => [t, 0])) as Record<
+    TipoHoraRegistro,
+    number
+  >
 
   for (const h of horas) {
     if (!Number.isFinite(h.horas) || h.horas <= 0) continue
@@ -210,14 +382,45 @@ export function salarioBasePeriodo(
   horas: Record<TipoHoraRegistro, number>,
   parametros: ParametrosCalculo,
 ): number {
+  return prorrateoDe(trabajador, horas, parametros).salario
+}
+
+/**
+ * El salario del periodo y el detalle de por que bajo, si bajo.
+ *
+ * Con `prorratear_ordinarias` encendido, las horas que falten para completar
+ * la jornada se tratan igual que una ausencia. Solo prorratea si hay alguna
+ * hora registrada: a quien no tenga tarjeta de tiempo no se le deja el sueldo
+ * en cero por un descuido.
+ */
+export function prorrateoDe(
+  trabajador: Trabajador,
+  horas: Record<TipoHoraRegistro, number>,
+  parametros: ParametrosCalculo,
+): { salario: number; esperadas: number; descontadas: number; descuento: number } {
   const vh = valorHora(trabajador, parametros)
+  const esperadas = Math.max(0, parametros.horas_mes)
 
   if (trabajador.modalidad === 'por_hora') {
-    return horas.ordinaria * vh
+    // aqui no hay nada que prorratear: se paga lo que se trabajo
+    return { salario: horas.ordinaria * vh, esperadas, descontadas: 0, descuento: 0 }
   }
 
-  const descuento = horas.ausencia * vh
-  return Math.max(0, trabajador.salario_basico - descuento)
+  const hayRegistro = horas.ordinaria > 0 || horas.ausencia > 0
+  const faltantes =
+    parametros.prorratear_ordinarias === true && hayRegistro
+      ? Math.max(0, esperadas - horas.ordinaria - horas.ausencia)
+      : 0
+
+  const descontadas = horas.ausencia + faltantes
+  const descuento = Math.min(trabajador.salario_basico, descontadas * vh)
+
+  return {
+    salario: Math.max(0, trabajador.salario_basico - descuento),
+    esperadas,
+    descontadas,
+    descuento,
+  }
 }
 
 /**
@@ -239,7 +442,14 @@ export function liquidar(e: EntradaLiquidacion): Liquidacion {
 
   const vh = valorHora(trabajador, parametros)
   const horas = horasPorTipo(e.horas)
-  const base = salarioBasePeriodo(trabajador, horas, parametros)
+  const prorrateo = prorrateoDe(trabajador, horas, parametros)
+  const base = prorrateo.salario
+
+  if (prorrateo.descuento > 0) {
+    alertas.push(
+      `Se le descontaron ${prorrateo.descontadas} h del salario del mes (${Math.round(prorrateo.descuento).toLocaleString('es-CO')} pesos).`,
+    )
+  }
 
   /*
     EL DETALLE DE LAS HORAS.
@@ -290,6 +500,15 @@ export function liquidar(e: EntradaLiquidacion): Liquidacion {
   let total_deducciones = 0
   /** Lo que entra a la base prestacional: horas + los devengados que la afectan. */
   let extraPrestacional = 0
+  /**
+   * El auxilio de transporte del periodo.
+   *
+   * Se guarda aparte porque es la SEGUNDA BASE de la nomina: no causa
+   * pension, salud, ARL ni parafiscales, pero si entra a cesantias, prima e
+   * intereses. Las lineas marcadas con `base_con_auxilio` se calculan sobre
+   * IBC + esto.
+   */
+  let auxilio_transporte = 0
 
   /** Resuelve el monto de un concepto sobre la base que le toque. */
   const montoDe = (c: ConceptoRemuneracion, basePrestacional: number): { base: number; monto: number } => {
@@ -317,6 +536,7 @@ export function liquidar(e: EntradaLiquidacion): Liquidacion {
     if (monto === 0) continue
     bonificaciones += monto
     if (c.afecta_base_prestacional) extraPrestacional += monto
+    else if (c.requiere_auxilio_transporte) auxilio_transporte += monto
     lineas.push({ concepto_id: c.id, nombre: c.nombre, tipo: 'devengado', base: b, monto })
   }
 
@@ -379,7 +599,69 @@ export function liquidar(e: EntradaLiquidacion): Liquidacion {
     alertas.push('Las deducciones superan el devengado: el neto quedó en cero.')
   }
 
-  const costo_empresa = total_devengado * (1 + parametros.factor_prestacional)
+  /*
+    LO QUE PAGA EL EMPLEADOR POR ENCIMA DEL SALARIO.
+
+    Se calcula linea por linea sobre el IBC, que es el DEVENGADO SALARIAL
+    (`base_prestacional`), no el total devengado: el auxilio de transporte y
+    las bonificaciones no salariales no causan aportes. Por eso el costo
+    empresa es `devengado + suma de las lineas`, y el desglose cuadra exacto.
+  */
+  const aportes: LineaAporte[] = []
+  let carga_prestacional = 0
+
+  if (usaFactorLegado(parametros)) {
+    // configuracion vieja: un solo numero, aplicado sobre el IBC igual
+    carga_prestacional = base_prestacional * (parametros.factor_prestacional ?? 0)
+    aportes.push({
+      id: 'factor_legado',
+      grupo: 'prestaciones',
+      nombre: 'Factor prestacional (configuración antigua)',
+      pct: (parametros.factor_prestacional ?? 0) * 100,
+      base: base_prestacional,
+      monto: carga_prestacional,
+      origen: 'global',
+    })
+  } else {
+    /*
+      LAS DOS BASES. Casi todo va sobre el IBC salarial; cesantias, prima e
+      intereses sobre cesantias van sobre el IBC MAS el auxilio de transporte.
+      Cada linea dice cual le toca y `LineaAporte.base` deja registrado con
+      cual se calculo, para que el desglose se pueda auditar renglon por
+      renglon.
+    */
+    const baseAmpliada = base_prestacional + auxilio_transporte
+
+    for (const l of lineasAporteDe(trabajador, parametros)) {
+      if (!l.activo || l.pct === 0) continue
+      const baseLinea = l.base_con_auxilio ? baseAmpliada : base_prestacional
+      const monto = (baseLinea * l.pct) / 100
+      carga_prestacional += monto
+      aportes.push({
+        id: l.id,
+        grupo: l.grupo,
+        nombre: l.nombre,
+        pct: l.pct,
+        base: baseLinea,
+        monto,
+        origen: l.origen,
+      })
+    }
+  }
+
+  const costo_empresa = total_devengado + carga_prestacional
+
+  /*
+    EL FACTOR QUE SE REPORTA ES EL EFECTIVO: carga / IBC.
+
+    Mientras todas las lineas vayan sobre el IBC salarial, el efectivo es
+    identico a la suma de los porcentajes. Pero si alguna va sobre el IBC mas
+    el auxilio, la carga real es mayor que esa suma, y reportar la suma seria
+    mentir sobre lo que cuesta la hora. Con IBC en cero no hay division
+    posible y se cae al nominal.
+  */
+  const factorNominal = factorPrestacionalDe(trabajador, parametros)
+  const factor = base_prestacional > 0 ? carga_prestacional / base_prestacional : factorNominal
 
   const horas_pagadas = TIPOS_HORA.reduce((s, t) => s + horas[t], 0)
 
@@ -396,13 +678,19 @@ export function liquidar(e: EntradaLiquidacion): Liquidacion {
     bonificaciones,
     total_devengado,
     base_prestacional,
+    auxilio_transporte,
     lineas,
     total_deducciones,
     neto_pagar,
+    aportes,
+    carga_prestacional,
     costo_empresa,
-    carga_prestacional: costo_empresa - total_devengado,
-    costo_hora_cargado: vh * (1 + parametros.factor_prestacional),
+    factor_prestacional: factor,
+    costo_hora_cargado: vh * (1 + factor),
     horas_pagadas,
+    horas_esperadas: prorrateo.esperadas,
+    horas_descontadas: prorrateo.descontadas,
+    descuento_por_horas: prorrateo.descuento,
     alertas,
   }
 }
@@ -505,14 +793,68 @@ export function gastosDeNominaDelPeriodo(liquidaciones: readonly Liquidacion[]):
 // 4. IMPUTACION A LAS ORDENES
 // =====================================================================
 
+
+/**
+ * LA TARIFA REAL DE UNA HORA, sacada de la liquidacion del periodo.
+ *
+ *   tarifa = costo_empresa / horas de la jornada del periodo
+ *
+ * Es lo que de verdad costo una hora de esa persona ese mes: salario,
+ * auxilio, extras, prestaciones y aportes, todo adentro. Se divide entre las
+ * horas de la JORNADA (`horas_esperadas`), no entre las que se imputaron a
+ * ordenes, y eso es a proposito: el costo de una hora no sube porque la
+ * persona haya estado quieta media jornada. Lo que pasa es que esas horas
+ * quietas no las absorbe ninguna orden, y esa diferencia es el tiempo ocioso
+ * —que `cuadreHorasDirectas` mide y reporta aparte—.
+ *
+ * Cuando la persona tiene varias liquidaciones en el mapa (varios periodos),
+ * se suman costos y horas: la tarifa es la del conjunto.
+ *
+ * Devuelve un mapa trabajador -> tarifa. Una persona sin liquidacion no
+ * aparece, y quien la use tiene que caer a `valorHora`.
+ */
+export function tarifaPorLiquidacion(
+  liquidaciones: readonly Liquidacion[],
+): Record<ID, number> {
+  const acumulado: Record<ID, { costo: number; horas: number }> = {}
+
+  for (const l of liquidaciones) {
+    const a = (acumulado[l.trabajador_id] ??= { costo: 0, horas: 0 })
+    a.costo += l.costo_empresa
+    a.horas += l.horas_esperadas
+  }
+
+  const out: Record<ID, number> = {}
+  for (const [id, a] of Object.entries(acumulado)) {
+    if (a.horas > 0) out[id] = a.costo / a.horas
+  }
+  return out
+}
+
+/** Si la MOD se costea con la tarifa real del periodo en vez del valor hora. */
+export function usaTarifaDeLiquidacion(parametros: ParametrosCalculo): boolean {
+  return parametros.tarifa_mod_desde === 'liquidacion'
+}
+
 /**
  * Reparte las horas imputadas entre las ordenes y las valora.
  *
- *   costo_MOD = horas × valor_hora × recargo × (1 + factor)
+ * DOS MANERAS DE PONERLE PRECIO A LA HORA, segun `tarifa_mod_desde`:
  *
- * El factor va o no segun `mod_con_factor_prestacional` (por defecto SI: la
- * hoja de costos se lleva el costo-empresa de la hora). Las dos cifras quedan
- * en cada linea, asi que se puede comparar sin recalcular nada.
+ *   'valor_hora' (por defecto)
+ *       costo_MOD = horas × valor_hora × recargo × (1 + factor)
+ *     El factor va o no segun `mod_con_factor_prestacional` (por defecto SI:
+ *     la hoja se lleva el costo-empresa de la hora). Las dos cifras quedan en
+ *     cada linea, asi que se puede comparar sin recalcular nada.
+ *
+ *   'liquidacion'
+ *       costo_MOD = horas × (costo_empresa del periodo / horas de la jornada) × recargo
+ *     La tarifa sale de `tarifas` y YA trae prestaciones y auxilio, asi que el
+ *     factor no se vuelve a aplicar. Es el metodo de los talleres. Si una
+ *     persona no tiene liquidacion en el mapa, se cae al valor hora y se avisa.
+ *
+ * Una `tarifa_hora` escrita en la asignacion manda sobre las dos: es la
+ * valvula de escape para forzar una tarifa en un ejercicio.
  *
  * NO HAY DOBLE CONTEO. Aqui solo entra la clasificacion 'directa'. Si alguien
  * imputa horas de un trabajador indirecto a una orden, esas horas NO se suman
@@ -524,11 +866,13 @@ export function manoObraPorOrden(
   asignaciones: readonly AsignacionMO[],
   trabajadores: readonly Trabajador[],
   parametros: ParametrosCalculo,
+  /** Tarifa real por trabajador, de `tarifaPorLiquidacion`. Solo se mira en modo 'liquidacion'. */
+  tarifas: Record<ID, number> = {},
 ): { porOrden: Record<ID, ManoObraOrden>; alertas: AlertaNomina[] } {
   const porId = new Map(trabajadores.map((t) => [t.id, t]))
+  const desdeLiquidacion = usaTarifaDeLiquidacion(parametros)
   const conFactor = usaFactorEnMOD(parametros)
   const alertas: AlertaNomina[] = []
-
   const porOrden: Record<ID, ManoObraOrden> = {}
   for (const o of ordenes) {
     porOrden[o.id] = {
@@ -543,6 +887,8 @@ export function manoObraPorOrden(
 
   // un id por asignacion, una vez: el mismo criterio del Kardex
   const vistos = new Set<ID>()
+  /** Para no repetir el aviso de «sin liquidación» una vez por asignación. */
+  const avisadosSinLiquidacion = new Set<ID>()
 
   for (const a of asignaciones) {
     const destino = porOrden[a.orden_id]
@@ -585,7 +931,37 @@ export function manoObraPorOrden(
       continue
     }
 
-    const vh = a.tarifa_hora ?? valorHora(trabajador, parametros)
+    /*
+      DE DONDE SALE LA TARIFA, en orden de prioridad:
+
+        1. la que diga la asignacion (forzar una tarifa en un ejercicio)
+        2. la real del periodo, si se pidio el modo 'liquidacion'
+        3. el valor hora del trabajador
+
+      `tarifaTraePrestaciones` recuerda si el numero que quedo ya incluye
+      prestaciones y auxilio. Importa, porque de eso depende que se aplique o
+      no el factor despues: aplicarlo sobre una tarifa que ya las trae seria
+      cobrarlas dos veces.
+    */
+    const deLiquidacion = desdeLiquidacion ? tarifas[trabajador.id] : undefined
+
+    if (desdeLiquidacion && a.tarifa_hora == null && deLiquidacion == null) {
+      if (!avisadosSinLiquidacion.has(trabajador.id)) {
+        avisadosSinLiquidacion.add(trabajador.id)
+        alertas.push({
+          clase: 'sin_tarifa',
+          orden_id: a.orden_id,
+          trabajador_id: trabajador.id,
+          mensaje:
+            `${trabajador.nombre} no tiene nómina liquidada en ningún período, así que no hay tarifa real ` +
+            'que usar: sus horas se costearon con el valor hora del salario. Liquidá el período y vuelve a cuadrar.',
+        })
+      }
+    }
+
+    const vh = a.tarifa_hora ?? deLiquidacion ?? valorHora(trabajador, parametros)
+    const tarifaTraePrestaciones = a.tarifa_hora == null && deLiquidacion != null
+
     if (vh <= 0) {
       alertas.push({
         clase: 'sin_tarifa',
@@ -597,7 +973,14 @@ export function manoObraPorOrden(
 
     const recargo = recargoDe(a.tipo_hora, parametros)
     const costo_salario = a.horas * vh * recargo
-    const costo_empresa = costo_salario * (1 + parametros.factor_prestacional)
+    /*
+      El factor es el de ESA persona: sus lineas y su clase de ARL. Y no se
+      aplica cuando la tarifa ya viene de la liquidacion, porque ahi las
+      prestaciones ya estan adentro.
+    */
+    const costo_empresa = tarifaTraePrestaciones
+      ? costo_salario
+      : costo_salario * (1 + factorPrestacionalDe(trabajador, parametros))
 
     const linea: LineaMODOrden = {
       asignacion_id: a.id,
@@ -610,7 +993,7 @@ export function manoObraPorOrden(
       recargo,
       costo_salario,
       costo_empresa,
-      total: conFactor ? costo_empresa : costo_salario,
+      total: conFactor || tarifaTraePrestaciones ? costo_empresa : costo_salario,
     }
 
     destino.lineas.push(linea)
