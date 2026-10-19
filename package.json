@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc -b",
     "deploy:check": "npm run build && npx serve dist",
-    "deploy:dry": "npm run build && npx --yes wrangler@4.147.0 deploy --dry-run"
+    "deploy:dry": "npm run build && npx --yes wrangler@4.147.0 deploy --dry-run",
+    "deploy": "npm run build && npx --yes wrangler@4.147.0 deploy",
+    "deploy:login": "npx --yes wrangler@4.147.0 login"
   },
   "dependencies": {
     "react": "^19.2.0",
