@@ -5,10 +5,14 @@ import {
   basesEquilibrio,
   equilibrioMezcla,
   esManoObraFija,
+  escenario,
   escenarioEquilibrio,
   precioParaUtilidad,
   puntoEquilibrio,
+  repartoFijos,
   supuestoDe,
+  tablaEscenarios,
+  tiposDeUtilidad,
   unidadesParaUtilidad,
 } from '../src/lib/equilibrio'
 import type { EntradaEquilibrio } from '../src/lib/equilibrio'
@@ -763,5 +767,261 @@ describe('el redondeo de unidades no inventa una unidad de más', () => {
       120_000,
     )
     expect(r.lineas[0].unidades_enteras).toBe(30)
+  })
+})
+
+// =====================================================================
+// ESCENARIOS DE GANANCIA
+// =====================================================================
+
+describe('escenario', () => {
+  // CF 1.000.000, PV 5.000, CVu 3.000 -> MC 2.000, equilibrio en 500
+  const CF = 1_000_000
+  const PV = 5_000
+  const CVU = 3_000
+
+  it('a volumen cero no hay ventas pero los fijos siguen ahí', () => {
+    const r = escenario(CF, PV, CVU, 0)
+
+    expect(r.ventas).toBe(0)
+    expect(r.costos_variables).toBe(0)
+    expect(r.margen_contribucion).toBe(0)
+    expect(r.costos_fijos).toBe(1_000_000)
+    expect(r.utilidad_operativa).toBe(-1_000_000)
+    // sin ventas no hay margen que calcular, y no explota
+    expect(r.margen_operativo).toBe(0)
+  })
+
+  it('en el equilibrio la utilidad es exactamente cero', () => {
+    const r = escenario(CF, PV, CVU, 500)
+
+    expect(r.ventas).toBe(2_500_000)
+    expect(r.costos_variables).toBe(1_500_000)
+    expect(r.margen_contribucion).toBe(1_000_000)
+    expect(r.utilidad_operativa).toBe(0)
+    expect(r.margen_operativo).toBe(0)
+  })
+
+  it('arriba del equilibrio, cada unidad deja su margen de contribución entero', () => {
+    const r = escenario(CF, PV, CVU, 600)
+    // 100 unidades por encima del equilibrio x 2.000 de MC
+    expect(r.utilidad_operativa).toBe(200_000)
+  })
+
+  it('la utilidad crece MÁS rápido que las ventas: apalancamiento operativo', () => {
+    const uno = escenario(CF, PV, CVU, 600)
+    const doble = escenario(CF, PV, CVU, 1_200)
+
+    expect(doble.ventas).toBe(uno.ventas * 2)
+    // las ventas se duplican, la utilidad se multiplica por 7
+    expect(doble.utilidad_operativa).toBe(1_400_000)
+    expect(doble.utilidad_operativa / uno.utilidad_operativa).toBe(7)
+  })
+
+  it('el margen operativo es utilidad sobre ventas', () => {
+    const r = escenario(CF, PV, CVU, 1_000)
+    // 1.000.000 de utilidad sobre 5.000.000 de ventas
+    expect(r.utilidad_operativa).toBe(1_000_000)
+    expect(r.margen_operativo).toBeCloseTo(0.2, 10)
+  })
+
+  it('un volumen negativo se trata como cero, no como una venta al revés', () => {
+    expect(escenario(CF, PV, CVU, -50).unidades).toBe(0)
+  })
+})
+
+describe('tablaEscenarios', () => {
+  const CF = 1_000_000
+  const PV = 5_000
+  const CVU = 3_000
+
+  it('trae cero, el equilibrio y los múltiplos, ordenados', () => {
+    const filas = tablaEscenarios(CF, PV, CVU)
+
+    expect(filas.map((f) => f.unidades)).toEqual([0, 500, 625, 750, 1_000])
+    expect(filas.map((f) => f.etiqueta)).toEqual([
+      'Sin vender nada',
+      'Equilibrio',
+      '×1,25 el equilibrio',
+      '×1,5 el equilibrio',
+      '×2 el equilibrio',
+    ])
+  })
+
+  it('marca la fila del equilibrio, y solo esa', () => {
+    const filas = tablaEscenarios(CF, PV, CVU)
+    const marcadas = filas.filter((f) => f.es_equilibrio)
+
+    expect(marcadas).toHaveLength(1)
+    expect(marcadas[0].unidades).toBe(500)
+    expect(marcadas[0].utilidad_operativa).toBe(0)
+  })
+
+  it('agrega el volumen esperado como su propia fila, en su lugar', () => {
+    const filas = tablaEscenarios(CF, PV, CVU, { volumenEsperado: 700 })
+
+    expect(filas.map((f) => f.unidades)).toEqual([0, 500, 625, 700, 750, 1_000])
+    expect(filas.find((f) => f.unidades === 700)?.etiqueta).toBe('Volumen esperado')
+  })
+
+  it('si el volumen esperado cae sobre otra fila, NO la duplica', () => {
+    const filas = tablaEscenarios(CF, PV, CVU, { volumenEsperado: 750 })
+
+    expect(filas.map((f) => f.unidades)).toEqual([0, 500, 625, 750, 1_000])
+    expect(filas.find((f) => f.unidades === 750)?.etiqueta).toBe(
+      '×1,5 el equilibrio · volumen esperado',
+    )
+  })
+
+  it('si el volumen esperado es el equilibrio, gana la etiqueta «Equilibrio»', () => {
+    const filas = tablaEscenarios(CF, PV, CVU, { volumenEsperado: 500 })
+    const fila = filas.find((f) => f.unidades === 500)
+
+    expect(fila?.etiqueta).toBe('Equilibrio')
+    expect(fila?.es_equilibrio).toBe(true)
+    expect(filas.filter((f) => f.unidades === 500)).toHaveLength(1)
+  })
+
+  it('acepta múltiplos propios', () => {
+    const filas = tablaEscenarios(CF, PV, CVU, { multiplos: [3] })
+    expect(filas.map((f) => f.unidades)).toEqual([0, 500, 1_500])
+  })
+
+  it('sin punto de equilibrio no inventa múltiplos de un número que no existe', () => {
+    // precio por debajo del costo variable
+    const filas = tablaEscenarios(CF, 2_000, 3_000, { volumenEsperado: 400 })
+
+    expect(filas.map((f) => f.unidades)).toEqual([0, 400])
+    expect(filas.every((f) => !f.es_equilibrio)).toBe(true)
+    // y las dos filas dan pérdida, que es la verdad
+    expect(filas.every((f) => f.utilidad_operativa < 0)).toBe(true)
+  })
+
+
+  it('la fila del equilibrio da CERO limpio, no −0,0000001', () => {
+    // con estos numeros la division deja resto y el float se va a negativo
+    const filas = tablaEscenarios(30_116_016, 502_039, 209_872.33)
+    const eq = filas.find((f) => f.es_equilibrio)!
+
+    expect(eq.utilidad_operativa).toBe(0)
+    expect(Object.is(eq.utilidad_operativa, -0)).toBe(false)
+    expect(eq.margen_operativo).toBe(0)
+  })
+
+  it('pero una perdida real de verdad sigue siendo negativa', () => {
+    const r = escenario(1_000_000, 5_000, 3_000, 499)
+    expect(r.utilidad_operativa).toBe(-2_000)
+  })
+  it('cada fila cuadra: ventas - variables - fijos = utilidad', () => {
+    for (const f of tablaEscenarios(CF, PV, CVU, { volumenEsperado: 880 })) {
+      expect(f.ventas - f.costos_variables - f.costos_fijos).toBeCloseTo(f.utilidad_operativa, 6)
+      expect(f.ventas - f.costos_variables).toBeCloseTo(f.margen_contribucion, 6)
+    }
+  })
+})
+
+// =====================================================================
+// LOS TRES TIPOS DE UTILIDAD
+// =====================================================================
+
+describe('tiposDeUtilidad', () => {
+  /*
+    1.000 unidades a 5.000 = 5.000.000 de ventas
+    costo de ventas = 1.000 x 3.000 + 600.000 de fijos de fábrica = 3.600.000
+    utilidad bruta  = 1.400.000
+    gastos del período = 400.000  ->  utilidad operativa = 1.000.000
+    impuesto 35%    = 350.000     ->  utilidad neta = 650.000
+  */
+  const BASE = {
+    unidades: 1_000,
+    precio: 5_000,
+    costo_variable_unitario: 3_000,
+    costos_fijos_produccion: 600_000,
+    gastos_del_periodo: 400_000,
+  }
+
+  it('separa el costo de fábrica del gasto del período', () => {
+    const r = tiposDeUtilidad({ ...BASE, tasa_impuesto_pct: 35 })
+
+    expect(r.ventas).toBe(5_000_000)
+    expect(r.costo_ventas).toBe(3_600_000)
+    expect(r.utilidad_bruta).toBe(1_400_000)
+    expect(r.gastos_periodo).toBe(400_000)
+    expect(r.utilidad_operativa).toBe(1_000_000)
+  })
+
+  it('calcula el impuesto y la utilidad neta', () => {
+    const r = tiposDeUtilidad({ ...BASE, tasa_impuesto_pct: 35 })
+
+    expect(r.impuesto).toBe(350_000)
+    expect(r.utilidad_neta).toBe(650_000)
+  })
+
+  it('los tres márgenes son sobre las ventas', () => {
+    const r = tiposDeUtilidad({ ...BASE, tasa_impuesto_pct: 35 })
+
+    expect(r.margen_bruto).toBeCloseTo(0.28, 10)
+    expect(r.margen_operativo).toBeCloseTo(0.2, 10)
+    expect(r.margen_neto).toBeCloseTo(0.13, 10)
+  })
+
+  it('sin tasa de impuesto, la neta es igual a la operativa', () => {
+    const r = tiposDeUtilidad(BASE)
+
+    expect(r.tasa_impuesto).toBe(0)
+    expect(r.impuesto).toBe(0)
+    expect(r.utilidad_neta).toBe(r.utilidad_operativa)
+  })
+
+  it('una empresa que pierde NO paga impuesto', () => {
+    const r = tiposDeUtilidad({ ...BASE, unidades: 100, tasa_impuesto_pct: 35 })
+
+    expect(r.utilidad_operativa).toBeLessThan(0)
+    expect(r.impuesto).toBe(0)
+    expect(r.utilidad_neta).toBe(r.utilidad_operativa)
+  })
+
+  it('la utilidad operativa coincide con la del escenario del mismo volumen', () => {
+    const fijosTotales = BASE.costos_fijos_produccion + BASE.gastos_del_periodo
+
+    for (const q of [1, 250, 500, 1_000, 2_500]) {
+      const porTipos = tiposDeUtilidad({ ...BASE, unidades: q })
+      const porEscenario = escenario(fijosTotales, BASE.precio, BASE.costo_variable_unitario, q)
+
+      expect(porTipos.utilidad_operativa).toBeCloseTo(porEscenario.utilidad_operativa, 6)
+      expect(porTipos.margen_operativo).toBeCloseTo(porEscenario.margen_operativo, 10)
+    }
+  })
+
+  it('rechaza volumen cero, precio cero y tasas imposibles', () => {
+    expect(tiposDeUtilidad({ ...BASE, unidades: 0 }).problema).toMatch(/sin unidades/i)
+    expect(tiposDeUtilidad({ ...BASE, precio: 0 }).problema).toMatch(/sin precio/i)
+    expect(tiposDeUtilidad({ ...BASE, tasa_impuesto_pct: 100 }).problema).toMatch(/entre 0% y 100%/i)
+    expect(tiposDeUtilidad({ ...BASE, tasa_impuesto_pct: -1 }).valido).toBe(false)
+  })
+})
+
+describe('repartoFijos', () => {
+  it('manda el gasto de administración abajo y el CIF de fábrica arriba', () => {
+    const r = repartoFijos({
+      lineas_fijas: [
+        { concepto: 'Arriendo de planta', monto: 2_000_000, origen: 'cif' },
+        { concepto: 'Nómina mensual', monto: 7_000_000, origen: 'nomina' },
+        { concepto: 'Administración', monto: 3_700_000, origen: 'gasto' },
+      ],
+    })
+
+    expect(r.produccion).toBe(9_000_000)
+    expect(r.gastos).toBe(3_700_000)
+  })
+
+  it('los dos grupos suman el total de fijos', () => {
+    const bases = basesEquilibrio(ENTRADA)
+    const r = repartoFijos(bases)
+
+    expect(r.produccion + r.gastos).toBeCloseTo(bases.costos_fijos, 6)
+    // en el ejemplo: 2.000.000 CIF + 1.500.000 nómina arriba; 1.000.000 + 400.000 abajo
+    expect(r.produccion).toBe(3_500_000)
+    expect(r.gastos).toBe(1_400_000)
   })
 })

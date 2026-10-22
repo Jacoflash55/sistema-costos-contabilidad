@@ -464,8 +464,317 @@ export function equilibrioMezcla(
   }
 }
 
+
 // =====================================================================
-// 2. DE DONDE SALEN LOS NUMEROS: LA CLASIFICACION FIJO / VARIABLE
+// 2. ESCENARIOS DE GANANCIA
+// =====================================================================
+
+/*
+  El punto de equilibrio contesta UNA pregunta: cuanto hay que vender para no
+  perder. Los escenarios contestan la siguiente, que es la que de verdad sirve
+  para decidir: y si vendo mas, cuanto gano.
+
+  Es el mismo estado de resultados por costeo variable, repetido a varios
+  volumenes:
+
+      ventas               = Q x PV
+      - costos variables   = Q x CVu
+      = margen contribucion
+      - costos fijos       (no cambian con Q: esa es toda la gracia)
+      = utilidad operativa
+
+  Lo que se ve al ponerlos en fila es que la utilidad NO crece proporcional a
+  las ventas: crece mas rapido, porque los fijos ya estan cubiertos. Duplicar
+  el volumen sobre el equilibrio no duplica la utilidad, la multiplica mucho
+  mas. Ese salto es el apalancamiento operativo, y es la razon de ser de esta
+  tabla.
+*/
+
+export interface FilaEscenario {
+  /** Como se llama este escenario: «Equilibrio», «×1,5», «Volumen esperado». */
+  etiqueta: string
+  unidades: number
+  ventas: number
+  costos_variables: number
+  margen_contribucion: number
+  costos_fijos: number
+  /** margen de contribucion - costos fijos. Puede ser negativa. */
+  utilidad_operativa: number
+  /** utilidad / ventas, entre 0 y 1. En 0 ventas da 0. */
+  margen_operativo: number
+  /** Para que la pantalla marque la fila del equilibrio. */
+  es_equilibrio: boolean
+}
+
+/**
+ * Un escenario: que pasa si se venden Q unidades.
+ *
+ * FUNCION PURA y sin guardas que corten: un volumen de 0 o una utilidad
+ * negativa son escenarios validos y se calculan igual. Perder plata a volumen
+ * cero es exactamente lo que hay que poder mostrar —ahi se ve que los costos
+ * fijos existen aunque no se produzca nada—. Las guardas viven en
+ * `puntoEquilibrio`, que es quien decide si hay equilibrio o no.
+ */
+export function escenario(
+  costosFijos: number,
+  precio: number,
+  costoVariableUnitario: number,
+  unidades: number,
+  etiqueta = '',
+  esEquilibrio = false,
+): FilaEscenario {
+  const q = Number.isFinite(unidades) ? Math.max(0, unidades) : 0
+  const ventas = q * precio
+  const costos_variables = q * costoVariableUnitario
+  const margen_contribucion = ventas - costos_variables
+  /*
+    En el equilibrio la utilidad es cero por definicion, pero la division que
+    saco las unidades deja un resto de coma flotante y el resultado queda en
+    -0,0000000001. Mostrado da «−$0» y «-0%», que parece un error de calculo y
+    no lo es. Todo lo que no llega a medio centavo se trata como cero, el mismo
+    umbral que usa `diferenciasEntre` en hoja.ts.
+  */
+  const bruta = margen_contribucion - costosFijos
+  const utilidad_operativa = Math.abs(bruta) < 0.005 ? 0 : bruta
+
+  return {
+    etiqueta,
+    unidades: q,
+    ventas,
+    costos_variables,
+    margen_contribucion,
+    costos_fijos: costosFijos,
+    utilidad_operativa,
+    margen_operativo: divSegura(utilidad_operativa, ventas),
+    es_equilibrio: esEquilibrio,
+  }
+}
+
+export interface OpcionesEscenarios {
+  /** El volumen que la empresa espera vender. Se agrega como su propia fila. */
+  volumenEsperado?: number
+  /** Multiplos del equilibrio. Por defecto 1,25 · 1,5 · 2. */
+  multiplos?: readonly number[]
+}
+
+/**
+ * La tabla completa: cero, el equilibrio, unos multiplos del equilibrio y el
+ * volumen que la empresa espera.
+ *
+ * Las filas salen ORDENADAS por unidades y SIN REPETIR: si el volumen
+ * esperado cae justo en el equilibrio o en un multiplo, no aparece dos veces
+ * —se queda la etiqueta mas informativa—. Repetir una fila en un cuadro
+ * comparativo es peor que omitirla: invita a leer dos veces el mismo dato.
+ *
+ * Si no hay punto de equilibrio (el precio no cubre el costo variable), la
+ * tabla NO se inventa multiplos de un numero que no existe: devuelve solo el
+ * cero y el volumen esperado, que siguen siendo escenarios reales aunque den
+ * perdida.
+ */
+export function tablaEscenarios(
+  costosFijos: number,
+  precio: number,
+  costoVariableUnitario: number,
+  opciones: OpcionesEscenarios = {},
+): FilaEscenario[] {
+  const pe = puntoEquilibrio(costosFijos, precio, costoVariableUnitario)
+  const multiplos = opciones.multiplos ?? [1.25, 1.5, 2]
+
+  /** Candidatos: unidades + etiqueta + si es la fila del equilibrio. */
+  const candidatos: Array<{ q: number; etiqueta: string; equilibrio: boolean }> = [
+    { q: 0, etiqueta: 'Sin vender nada', equilibrio: false },
+  ]
+
+  if (pe.valido) {
+    candidatos.push({ q: pe.unidades, etiqueta: 'Equilibrio', equilibrio: true })
+    for (const m of multiplos) {
+      if (!Number.isFinite(m) || m <= 0) continue
+      candidatos.push({
+        q: pe.unidades * m,
+        etiqueta: `×${m.toLocaleString('es-CO')} el equilibrio`,
+        equilibrio: false,
+      })
+    }
+  }
+
+  const esperado = opciones.volumenEsperado
+  if (esperado != null && Number.isFinite(esperado) && esperado > 0) {
+    candidatos.push({ q: esperado, etiqueta: 'Volumen esperado', equilibrio: false })
+  }
+
+  /*
+    Deduplicar por unidades. Se comparan redondeadas a 6 decimales para que
+    1.000,0000001 y 1.000 no cuenten como dos escenarios distintos, que es lo
+    que pasaria con el volumen esperado cayendo sobre un multiplo.
+  */
+  const vistos = new Map<number, { q: number; etiqueta: string; equilibrio: boolean }>()
+  for (const c of candidatos) {
+    const clave = Math.round(c.q * 1e6) / 1e6
+    const previo = vistos.get(clave)
+    if (!previo) {
+      vistos.set(clave, c)
+      continue
+    }
+    // el equilibrio manda sobre cualquier otra etiqueta; despues, el volumen esperado
+    if (c.equilibrio) vistos.set(clave, c)
+    else if (!previo.equilibrio && c.etiqueta === 'Volumen esperado') {
+      vistos.set(clave, { ...c, etiqueta: `${previo.etiqueta} · volumen esperado` })
+    }
+  }
+
+  return [...vistos.values()]
+    .sort((a, b) => a.q - b.q)
+    .map((c) => escenario(costosFijos, precio, costoVariableUnitario, c.q, c.etiqueta, c.equilibrio))
+}
+
+// =====================================================================
+// 3. LOS TRES TIPOS DE UTILIDAD
+// =====================================================================
+
+/*
+  «Utilidad» a secas no quiere decir nada: hay tres, y cada una resta cosas
+  distintas. Confundirlas es como confundir el neto a pagar con el costo del
+  empleado.
+
+      ventas
+      - costo de ventas        (lo variable de produccion + los fijos DE FABRICA)
+      = UTILIDAD BRUTA
+      - gastos del periodo     (administracion y ventas)
+      = UTILIDAD OPERATIVA
+      - impuesto
+      = UTILIDAD NETA
+
+  Fijate donde cae la raya: el arriendo de la planta esta ARRIBA, dentro del
+  costo de ventas, porque es costo del producto. El arriendo de la oficina
+  esta ABAJO, porque es gasto del periodo. Es la misma distincion por
+  naturaleza de categoria que ya decide quien entra a la hoja de costos, y por
+  eso los dos modulos no pueden contradecirse.
+*/
+
+export interface TiposDeUtilidad {
+  unidades: number
+  ventas: number
+  /** Variable de produccion x Q, mas los fijos de fabrica. */
+  costo_ventas: number
+  utilidad_bruta: number
+  margen_bruto: number
+  /** Administracion y ventas: no son costo del producto. */
+  gastos_periodo: number
+  utilidad_operativa: number
+  margen_operativo: number
+  tasa_impuesto: number
+  impuesto: number
+  utilidad_neta: number
+  margen_neto: number
+  valido: boolean
+  problema?: string
+}
+
+export interface EntradaTiposUtilidad {
+  unidades: number
+  precio: number
+  costo_variable_unitario: number
+  /** Los fijos que SI son costo del producto: CIF de fábrica y mano de obra. */
+  costos_fijos_produccion: number
+  /** Administración y ventas. */
+  gastos_del_periodo: number
+  /** En porcentaje (35 = 35%). En 0 no hay impuesto. */
+  tasa_impuesto_pct?: number
+}
+
+/**
+ * Las tres utilidades de un escenario.
+ *
+ * EL IMPUESTO SOLO SE COBRA SOBRE GANANCIA. Si la utilidad operativa es
+ * negativa, el impuesto queda en cero y la neta es igual a la operativa: una
+ * empresa que pierde no paga renta, y aplicarle la tasa a un numero negativo
+ * daria un "ahorro" fiscal que este modelo no tiene por que inventar.
+ */
+export function tiposDeUtilidad(e: EntradaTiposUtilidad): TiposDeUtilidad {
+  const { unidades: q, precio, costo_variable_unitario: cvu } = e
+  const fijosProduccion = e.costos_fijos_produccion
+  const gastos = e.gastos_del_periodo
+  const tasa = e.tasa_impuesto_pct ?? 0
+
+  const vacio: TiposDeUtilidad = {
+    unidades: q,
+    ventas: 0,
+    costo_ventas: 0,
+    utilidad_bruta: 0,
+    margen_bruto: 0,
+    gastos_periodo: gastos,
+    utilidad_operativa: 0,
+    margen_operativo: 0,
+    tasa_impuesto: tasa,
+    impuesto: 0,
+    utilidad_neta: 0,
+    margen_neto: 0,
+    valido: false,
+  }
+
+  if (![q, precio, cvu, fijosProduccion, gastos, tasa].every((n) => Number.isFinite(n))) {
+    return { ...vacio, problema: 'Alguno de los datos no es un número.' }
+  }
+  if (q <= 0) {
+    return { ...vacio, problema: 'Sin unidades vendidas no hay estado de resultados que armar.' }
+  }
+  if (precio <= 0) {
+    return { ...vacio, problema: 'Sin precio de venta no hay ventas que registrar.' }
+  }
+  if (tasa < 0 || tasa >= 100) {
+    return { ...vacio, problema: 'La tasa de impuesto tiene que estar entre 0% y 100%.' }
+  }
+
+  const ventas = q * precio
+  const costo_ventas = q * cvu + fijosProduccion
+  const utilidad_bruta = ventas - costo_ventas
+  const utilidad_operativa = utilidad_bruta - gastos
+  // solo se tributa sobre ganancia
+  const impuesto = utilidad_operativa > 0 ? (utilidad_operativa * tasa) / 100 : 0
+  const utilidad_neta = utilidad_operativa - impuesto
+
+  return {
+    unidades: q,
+    ventas,
+    costo_ventas,
+    utilidad_bruta,
+    margen_bruto: divSegura(utilidad_bruta, ventas),
+    gastos_periodo: gastos,
+    utilidad_operativa,
+    margen_operativo: divSegura(utilidad_operativa, ventas),
+    tasa_impuesto: tasa,
+    impuesto,
+    utilidad_neta,
+    margen_neto: divSegura(utilidad_neta, ventas),
+    valido: true,
+  }
+}
+
+/**
+ * Parte los costos fijos en los dos grupos que los tres tipos de utilidad
+ * necesitan: los que son COSTO DEL PRODUCTO y los que son GASTO DEL PERIODO.
+ *
+ * El criterio ya lo decidio el usuario cuando le puso naturaleza a cada
+ * categoria de CIF: lo que `basesEquilibrio` marco como 'cif' o 'nomina' es
+ * costo de fabrica, y lo marcado 'gasto' es administracion y ventas. Aqui solo
+ * se suma, para que la pantalla no tenga que hacerlo.
+ */
+export function repartoFijos(bases: Pick<BasesEquilibrio, 'lineas_fijas'>): {
+  produccion: number
+  gastos: number
+} {
+  let produccion = 0
+  let gastos = 0
+
+  for (const l of bases.lineas_fijas) {
+    if (l.origen === 'gasto') gastos += l.monto
+    else produccion += l.monto
+  }
+
+  return { produccion, gastos }
+}
+// =====================================================================
+// 4. DE DONDE SALEN LOS NUMEROS: LA CLASIFICACION FIJO / VARIABLE
 // =====================================================================
 
 /*
@@ -789,7 +1098,7 @@ export function basesEquilibrio(e: EntradaEquilibrio): BasesEquilibrio {
 }
 
 // =====================================================================
-// 3. LOS SUPUESTOS A MANO
+// 5. LOS SUPUESTOS A MANO
 // =====================================================================
 
 export type OrigenDato = 'derivado' | 'manual'

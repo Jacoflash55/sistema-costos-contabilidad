@@ -32,15 +32,18 @@ import {
   equilibrioMezcla,
   precioParaUtilidad,
   puntoEquilibrio,
+  repartoFijos,
+  tablaEscenarios,
+  tiposDeUtilidad,
   unidadesParaUtilidad,
 } from '../lib/equilibrio'
-import type { ProductoEscenario } from '../lib/equilibrio'
+import type { FilaEscenario, ProductoEscenario } from '../lib/equilibrio'
 import { cantidad as fmtCantidad, cop, copCorto, copPreciso, pct } from '../lib/formato'
 import { precioSugerido } from '../lib/hoja'
 import type { ID, Mes } from '../lib/tipos'
 import { unidadCorta } from '../lib/unidades'
 
-type Seccion = 'productos' | 'objetivo' | 'mezcla'
+type Seccion = 'productos' | 'objetivo' | 'escenarios' | 'utilidad' | 'mezcla'
 
 /** La marca de de dónde salió un número: del sistema, o de la mano del usuario. */
 function Origen({ manual }: { manual: boolean }) {
@@ -98,12 +101,16 @@ export function Equilibrio() {
         opciones={[
           { valor: 'productos', texto: 'Por producto', insignia: escenario.productos.length || undefined },
           { valor: 'objetivo', texto: 'Utilidad objetivo' },
+          { valor: 'escenarios', texto: 'Escenarios de ganancia' },
+          { valor: 'utilidad', texto: 'Tipos de utilidad' },
           { valor: 'mezcla', texto: 'La empresa (mezcla)' },
         ]}
       />
 
       {seccion === 'productos' && <PorProducto periodo={periodoActivo} />}
       {seccion === 'objetivo' && <UtilidadObjetivo periodo={periodoActivo} />}
+      {seccion === 'escenarios' && <Escenarios periodo={periodoActivo} />}
+      {seccion === 'utilidad' && <TiposUtilidad periodo={periodoActivo} />}
       {seccion === 'mezcla' && <Mezcla periodo={periodoActivo} />}
 
       <p className="text-xs text-tenue">
@@ -809,6 +816,360 @@ function UtilidadObjetivo({ periodo }: { periodo: Mes }) {
 }
 
 // =====================================================================
+// =====================================================================
+// Escenarios de ganancia
+// =====================================================================
+
+function Escenarios({ periodo }: { periodo: Mes }) {
+  const { calculado } = useEstado()
+  const escenario = calculado.escenariosEquilibrio[periodo]
+
+  const [productoId, setProductoId] = useState<ID>('')
+  const elegido = escenario.productos.find((p) => p.producto_id === productoId) ?? escenario.productos[0]
+
+  const [volumen, setVolumen] = useState(0)
+
+  if (!elegido) {
+    return (
+      <Tarjeta>
+        <Aviso tono="aviso">Este período no tiene productos con unidades producidas.</Aviso>
+      </Tarjeta>
+    )
+  }
+
+  /* En blanco usa lo que se produjo en el mes: es el dato que hay. */
+  const q = volumen > 0 ? volumen : elegido.unidades
+
+  const filas = tablaEscenarios(escenario.costos_fijos, elegido.precio_usado, elegido.cvu_usado, {
+    volumenEsperado: q,
+  })
+
+  const pe = puntoEquilibrio(escenario.costos_fijos, elegido.precio_usado, elegido.cvu_usado)
+
+  const columnas: Columna<FilaEscenario>[] = [
+    {
+      clave: 'etiqueta',
+      titulo: 'Escenario',
+      valor: (f) => f.unidades,
+      render: (f) => (
+        <div>
+          <p className={f.es_equilibrio ? 'font-semibold text-acento' : 'font-medium'}>{f.etiqueta}</p>
+          <p className="text-xs text-tenue">
+            {fmtCantidad(f.unidades, 0)} {unidadCorta(elegido.unidad)}
+          </p>
+        </div>
+      ),
+    },
+    {
+      clave: 'ventas',
+      titulo: 'Ventas',
+      alineacion: 'der',
+      valor: (f) => f.ventas,
+      render: (f) => <span className="cifra tabular-nums">{cop(f.ventas)}</span>,
+    },
+    {
+      clave: 'cv',
+      titulo: '− Costos variables',
+      alineacion: 'der',
+      valor: (f) => f.costos_variables,
+      render: (f) => <span className="cifra tabular-nums text-suave">{cop(f.costos_variables)}</span>,
+    },
+    {
+      clave: 'mc',
+      titulo: '= Margen de contribución',
+      alineacion: 'der',
+      valor: (f) => f.margen_contribucion,
+      render: (f) => <span className="cifra tabular-nums">{cop(f.margen_contribucion)}</span>,
+    },
+    {
+      clave: 'cf',
+      titulo: '− Costos fijos',
+      alineacion: 'der',
+      valor: (f) => f.costos_fijos,
+      render: (f) => <span className="cifra tabular-nums text-suave">{cop(f.costos_fijos)}</span>,
+    },
+    {
+      clave: 'utilidad',
+      titulo: '= Utilidad operativa',
+      alineacion: 'der',
+      valor: (f) => f.utilidad_operativa,
+      render: (f) => (
+        <span
+          className={`cifra font-semibold tabular-nums ${
+            f.utilidad_operativa > 0 ? 'text-positivo' : f.utilidad_operativa < 0 ? 'text-negativo' : ''
+          }`}
+        >
+          {cop(f.utilidad_operativa)}
+        </span>
+      ),
+    },
+    {
+      clave: 'margen',
+      titulo: '%',
+      alineacion: 'der',
+      valor: (f) => f.margen_operativo,
+      render: (f) => (
+        <span className="text-xs text-suave">
+          {f.ventas > 0 ? pct(f.margen_operativo * 100, 1) : '—'}
+        </span>
+      ),
+    },
+  ]
+
+  return (
+    <div className="space-y-4">
+      <Tarjeta>
+        <TituloSeccion
+          nota="El estado de resultados por costeo variable, repetido a varios volúmenes."
+          acciones={
+            <div className="flex flex-wrap items-end gap-3">
+              <Campo etiqueta="Producto">
+                {(id) => (
+                  <Selector<ID>
+                    id={id}
+                    valor={elegido.producto_id}
+                    onChange={setProductoId}
+                    opciones={escenario.productos.map((p) => ({ valor: p.producto_id, texto: p.nombre }))}
+                  />
+                )}
+              </Campo>
+              <Campo
+                etiqueta="Volumen esperado"
+                ayuda={volumen > 0 ? undefined : `En blanco: ${fmtCantidad(elegido.unidades, 0)}`}
+              >
+                {(id) => (
+                  <InputCifra
+                    id={id}
+                    valor={volumen}
+                    paso={10}
+                    sufijo={unidadCorta(elegido.unidad)}
+                    onChange={setVolumen}
+                  />
+                )}
+              </Campo>
+            </div>
+          }
+        >
+          Escenarios de ganancia · {elegido.nombre}
+        </TituloSeccion>
+
+        <Tabla
+          columnas={columnas}
+          filas={filas}
+          claveFila={(f, i) => `${f.etiqueta}-${i}`}
+          resaltarFila={(f) => (f.es_equilibrio ? 'acento' : null)}
+        />
+
+        {pe.valido ? (
+          <Aviso tono="neutro" className="mt-4" titulo="Por qué la utilidad crece más rápido que las ventas">
+            <p>
+              Los costos fijos son los mismos en todas las filas: {cop(escenario.costos_fijos)}. Hasta el
+              equilibrio, cada unidad vendida se gasta su margen de contribución en cubrirlos. Pasado ese
+              punto ya están cubiertos, así que{' '}
+              <strong>cada unidad extra deja sus {copPreciso(pe.margen_contribucion)} completos</strong>.
+              Por eso duplicar el volumen no duplica la utilidad: la multiplica mucho más. Eso se llama
+              apalancamiento operativo.
+            </p>
+          </Aviso>
+        ) : (
+          <Aviso tono="negativo" className="mt-4">
+            {pe.problema} Por eso la tabla no muestra múltiplos del equilibrio: no hay equilibrio del cual
+            sacarlos.
+          </Aviso>
+        )}
+      </Tarjeta>
+    </div>
+  )
+}
+
+// =====================================================================
+// Los tres tipos de utilidad
+// =====================================================================
+
+function TiposUtilidad({ periodo }: { periodo: Mes }) {
+  const { calculado } = useEstado()
+  const escenario = calculado.escenariosEquilibrio[periodo]
+
+  const [productoId, setProductoId] = useState<ID>('')
+  const elegido = escenario.productos.find((p) => p.producto_id === productoId) ?? escenario.productos[0]
+
+  const [volumen, setVolumen] = useState(0)
+  const [tasa, setTasa] = useState(35)
+
+  if (!elegido) {
+    return (
+      <Tarjeta>
+        <Aviso tono="aviso">Este período no tiene productos con unidades producidas.</Aviso>
+      </Tarjeta>
+    )
+  }
+
+  const q = volumen > 0 ? volumen : elegido.unidades
+  const reparto = repartoFijos(escenario.bases)
+
+  /*
+    OJO con el reparto de fijos: la pantalla usa los DERIVADOS, no el total que
+    el usuario pudo haber escrito a mano. Si escribió un total propio, no hay
+    forma de saber qué parte de ese número es de fábrica y qué parte es gasto,
+    así que se avisa en vez de adivinar.
+  */
+  const hayFijosManuales = escenario.origen_costos_fijos === 'manual'
+
+  const r = tiposDeUtilidad({
+    unidades: q,
+    precio: elegido.precio_usado,
+    costo_variable_unitario: elegido.cvu_usado,
+    costos_fijos_produccion: reparto.produccion,
+    gastos_del_periodo: reparto.gastos,
+    tasa_impuesto_pct: tasa,
+  })
+
+  const renglon = (
+    etiqueta: string,
+    valor: number,
+    opciones: { resta?: boolean; fuerte?: boolean; margen?: number; nota?: string } = {},
+  ) => (
+    <div
+      className={`flex items-baseline justify-between gap-3 py-2 ${
+        opciones.fuerte ? 'border-t border-borde' : ''
+      }`}
+    >
+      <div>
+        <p className={opciones.fuerte ? 'text-sm font-semibold' : 'text-sm text-suave'}>
+          {opciones.resta && <span className="text-tenue">− </span>}
+          {etiqueta}
+        </p>
+        {opciones.nota && <p className="text-xs text-tenue">{opciones.nota}</p>}
+      </div>
+      <div className="text-right">
+        <p
+          className={`cifra tabular-nums ${opciones.fuerte ? 'text-base font-semibold' : 'text-sm'} ${
+            opciones.fuerte && valor < 0 ? 'text-negativo' : opciones.fuerte && valor > 0 ? 'text-positivo' : ''
+          }`}
+        >
+          {cop(valor)}
+        </p>
+        {opciones.margen != null && (
+          <p className="text-xs text-tenue">{pct(opciones.margen * 100, 1)} de las ventas</p>
+        )}
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="space-y-4">
+      <Tarjeta>
+        <TituloSeccion
+          nota="«Utilidad» a secas no dice nada: hay tres, y cada una resta cosas distintas."
+          acciones={
+            <div className="flex flex-wrap items-end gap-3">
+              <Campo etiqueta="Producto">
+                {(id) => (
+                  <Selector<ID>
+                    id={id}
+                    valor={elegido.producto_id}
+                    onChange={setProductoId}
+                    opciones={escenario.productos.map((p) => ({ valor: p.producto_id, texto: p.nombre }))}
+                  />
+                )}
+              </Campo>
+              <Campo
+                etiqueta="Unidades vendidas"
+                ayuda={volumen > 0 ? undefined : `En blanco: ${fmtCantidad(elegido.unidades, 0)}`}
+              >
+                {(id) => (
+                  <InputCifra
+                    id={id}
+                    valor={volumen}
+                    paso={10}
+                    sufijo={unidadCorta(elegido.unidad)}
+                    onChange={setVolumen}
+                  />
+                )}
+              </Campo>
+              <Campo etiqueta="Tasa de impuesto" ayuda="Solo sobre ganancia">
+                {(id) => <InputCifra id={id} valor={tasa} paso={1} sufijo="%" onChange={setTasa} />}
+              </Campo>
+            </div>
+          }
+        >
+          Tipos de utilidad · {elegido.nombre}
+        </TituloSeccion>
+
+        {r.valido ? (
+          <>
+            <div className="rounded-lg border border-borde bg-panel-alto px-4 py-2">
+              {renglon('Ventas', r.ventas, {
+                nota: `${fmtCantidad(q, 0)} ${unidadCorta(elegido.unidad)} × ${cop(elegido.precio_usado)}`,
+              })}
+              {renglon('Costo de ventas', r.costo_ventas, {
+                resta: true,
+                nota: `${copPreciso(elegido.cvu_usado)} variable por unidad + ${cop(reparto.produccion)} de fijos de fábrica`,
+              })}
+              {renglon('Utilidad bruta', r.utilidad_bruta, { fuerte: true, margen: r.margen_bruto })}
+
+              {renglon('Gastos del período', r.gastos_periodo, {
+                resta: true,
+                nota: 'Administración y ventas: no son costo del producto',
+              })}
+              {renglon('Utilidad operativa', r.utilidad_operativa, {
+                fuerte: true,
+                margen: r.margen_operativo,
+              })}
+
+              {renglon(`Impuesto (${pct(r.tasa_impuesto, 0)})`, r.impuesto, {
+                resta: true,
+                nota: r.utilidad_operativa > 0 ? undefined : 'Sin ganancia no se tributa',
+              })}
+              {renglon('Utilidad neta', r.utilidad_neta, { fuerte: true, margen: r.margen_neto })}
+            </div>
+
+            <Rejilla columnas={3}>
+              <Cifra
+                etiqueta="Margen bruto"
+                valor={pct(r.margen_bruto * 100, 1)}
+                tamano="sm"
+                pie="Lo que deja el producto antes de la oficina"
+              />
+              <Cifra
+                etiqueta="Margen operativo"
+                valor={pct(r.margen_operativo * 100, 1)}
+                tamano="sm"
+                pie="Lo que deja el negocio operando"
+              />
+              <Cifra
+                etiqueta="Margen neto"
+                valor={pct(r.margen_neto * 100, 1)}
+                tono={r.utilidad_neta > 0 ? 'positivo' : 'negativo'}
+                tamano="sm"
+                pie="Lo que queda al final"
+              />
+            </Rejilla>
+
+            <p className="mt-3 text-xs text-tenue">
+              <strong>Dónde cae la raya.</strong> El arriendo de la planta está <em>arriba</em>, dentro del
+              costo de ventas, porque es costo del producto. El de la oficina está <em>abajo</em>, porque es
+              gasto del período. Es la misma distinción por naturaleza de categoría que decide quién entra a
+              la hoja de costos, así que los dos módulos no pueden contradecirse.
+            </p>
+
+            {hayFijosManuales && (
+              <Aviso tono="aviso" className="mt-3" titulo="Los costos fijos están puestos a mano">
+                Escribiste un total propio de {cop(escenario.costos_fijos)}, pero acá hay que separar lo de
+                fábrica de lo de oficina y no hay forma de saber cómo partir ese número. Este cuadro usa el
+                reparto <strong>derivado</strong>: {cop(reparto.produccion)} de fábrica y{' '}
+                {cop(reparto.gastos)} de gastos. Las otras pestañas sí usan tu total.
+              </Aviso>
+            )}
+          </>
+        ) : (
+          <Aviso tono="negativo">{r.problema}</Aviso>
+        )}
+      </Tarjeta>
+    </div>
+  )
+}
+
 // La mezcla: el equilibrio de la empresa
 // =====================================================================
 

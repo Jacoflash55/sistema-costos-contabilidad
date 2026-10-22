@@ -29,12 +29,13 @@ import { Proximamente } from './pages/Proximamente'
   Es el mismo reparto de la regla de oro del proyecto —las formulas viven en
   `src/lib/` y la UI no calcula nada— pero visible en la barra de arriba.
 */
-type Grupo = 'configura' | 'registra' | 'calcula'
+type Grupo = 'configura' | 'registra' | 'calcula' | 'decide'
 
 const ETIQUETA_GRUPO_NAV: Record<Grupo, string> = {
   configura: 'Se configura',
   registra: 'Se registra',
   calcula: 'Se calcula solo',
+  decide: 'Se decide',
 }
 
 const PAGINAS: ReadonlyArray<{ a: string; icono: string; texto: string; grupo: Grupo }> = [
@@ -48,8 +49,9 @@ const PAGINAS: ReadonlyArray<{ a: string; icono: string; texto: string; grupo: G
 
   { a: '/kardex', icono: '📋', texto: 'Kardex', grupo: 'calcula' },
   { a: '/hojas-costos', icono: '🧾', texto: 'Hojas de costos', grupo: 'calcula' },
-  { a: '/equilibrio', icono: '⚖️', texto: 'Punto de equilibrio', grupo: 'calcula' },
-  { a: '/informes', icono: '📊', texto: 'Informes', grupo: 'calcula' },
+
+  { a: '/equilibrio', icono: '⚖️', texto: 'Punto de equilibrio', grupo: 'decide' },
+  { a: '/informes', icono: '📊', texto: 'Informes', grupo: 'decide' },
 ]
 
 function BotonTema() {
