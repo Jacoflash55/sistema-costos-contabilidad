@@ -714,6 +714,7 @@ describe('integración de punta a punta por calcularTodo', () => {
       ventas: [],
       gastos: [],
       supuestos_equilibrio: [],
+      valores_informe: [],
     },
   }
 

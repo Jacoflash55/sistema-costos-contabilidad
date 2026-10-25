@@ -784,6 +784,45 @@ export function ProveedorEstado({ children }: { children: ReactNode }) {
     })
     setHayCambiosLocales(true)
   }, [])
+
+  // ---------------------------------------------------------------------
+  // Numeros a mano de los estados financieros
+  // ---------------------------------------------------------------------
+
+  /*
+    Mismo patron que los supuestos del equilibrio: se guardan en la rebanada
+    comercial, viajan en el respaldo y una fila en cero se borra sola. Una
+    cuenta en cero y una cuenta sin escribir son lo mismo, y guardar la
+    diferencia solo serviria para confundir.
+  */
+  const fijarValorInforme = useCallback((periodo: Mes, clave: string, monto: number) => {
+    setComercial((prev) => {
+      const lista = prev.valores_informe ?? []
+      const sinEsta = lista.filter((v) => !(v.periodo === periodo && v.clave === clave))
+
+      const valores_informe =
+        Number.isFinite(monto) && monto !== 0
+          ? [...sinEsta, { id: nuevoId(), periodo, clave, monto }]
+          : sinEsta
+
+      const next = { ...prev, valores_informe }
+      guardar(CLAVES.comercial, next)
+      return next
+    })
+    setHayCambiosLocales(true)
+  }, [])
+
+  const limpiarValoresInforme = useCallback((periodo: Mes) => {
+    setComercial((prev) => {
+      const next = {
+        ...prev,
+        valores_informe: (prev.valores_informe ?? []).filter((v) => v.periodo !== periodo),
+      }
+      guardar(CLAVES.comercial, next)
+      return next
+    })
+    setHayCambiosLocales(true)
+  }, [])
   // ---------------------------------------------------------------------
   // Hojas de costos
   // ---------------------------------------------------------------------
@@ -1017,6 +1056,8 @@ export function ProveedorEstado({ children }: { children: ReactNode }) {
       borrarCliente,
       fijarSupuestoEquilibrio,
       limpiarSupuestosEquilibrio,
+      fijarValorInforme,
+      limpiarValoresInforme,
       crearHoja,
       actualizarHoja,
       borrarHoja,
@@ -1081,6 +1122,8 @@ export function ProveedorEstado({ children }: { children: ReactNode }) {
       borrarCliente,
       fijarSupuestoEquilibrio,
       limpiarSupuestosEquilibrio,
+      fijarValorInforme,
+      limpiarValoresInforme,
       crearHoja,
       actualizarHoja,
       borrarHoja,

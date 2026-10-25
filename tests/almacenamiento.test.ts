@@ -134,7 +134,7 @@ describe('respaldo: exportar e importar', () => {
           hojas: [],
         },
         cif: { categorias: [], cif: [] },
-        comercial: { clientes: [], ventas: [], gastos: [], supuestos_equilibrio: [] },
+        comercial: { clientes: [], ventas: [], gastos: [], supuestos_equilibrio: [], valores_informe: [] },
       },
       '2026-10-09T12:00:00.000Z',
     )

@@ -2,5 +2,6 @@
   "clientes": [],
   "ventas": [],
   "gastos": [],
-  "supuestos_equilibrio": []
+  "supuestos_equilibrio": [],
+  "valores_informe": []
 }

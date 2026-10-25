@@ -146,6 +146,18 @@ export interface Estado {
   /** Borra todos los supuestos de un periodo: vuelve a lo que el sistema deriva. */
   limpiarSupuestosEquilibrio: (periodo: Mes) => void
 
+  // ---------- informes financieros ----------
+  /**
+   * Fija un numero a mano de los estados financieros: una cuenta del balance
+   * o un parametro del estado de resultados.
+   *
+   * En 0 la fila se borra, porque una cuenta en cero es lo mismo que una
+   * cuenta sin escribir y no vale la pena guardarla.
+   */
+  fijarValorInforme: (periodo: Mes, clave: string, monto: number) => void
+  /** Borra todos los numeros a mano de un periodo. */
+  limpiarValoresInforme: (periodo: Mes) => void
+
   // ---------- hojas de costos ----------
   /** Crea la hoja de una orden que todavia no tiene. Devuelve el id, o el de la que ya existia. */
   crearHoja: (ordenId: ID) => ID

@@ -9,6 +9,7 @@ import { Kardex } from './pages/Kardex'
 import { CIF } from './pages/CIF'
 import { Equilibrio } from './pages/Equilibrio'
 import { HojasCostos } from './pages/HojasCostos'
+import { Informes } from './pages/Informes'
 import { MateriasPrimas } from './pages/MateriasPrimas'
 import { Nomina } from './pages/Nomina'
 import { Ordenes } from './pages/Ordenes'
@@ -293,15 +294,7 @@ function Cascara() {
           <Route path="/cif" element={<CIF />} />
           <Route path="/hojas-costos" element={<HojasCostos />} />
           <Route path="/equilibrio" element={<Equilibrio />} />
-          <Route
-            path="/informes"
-            element={
-              <Proximamente
-                titulo="Informes"
-                descripcion="Estado de costos de producción y ventas, márgenes por producto."
-              />
-            }
-          />
+          <Route path="/informes" element={<Informes />} />
           <Route
             path="*"
             element={<Proximamente titulo="Esta página no existe" descripcion="Usá el menú de arriba." />}

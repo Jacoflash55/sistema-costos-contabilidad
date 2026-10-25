@@ -1364,6 +1364,26 @@ export interface SupuestoEquilibrio {
   nota?: string
 }
 
+/**
+ * UN NUMERO QUE LA PERSONA ESCRIBE EN UN INFORME.
+ *
+ * Los dos estados financieros son MIXTOS: el sistema sabe el inventario, el
+ * costo de ventas y la utilidad, porque los calculo el. No sabe cuanta plata
+ * hay en el banco, ni cuanto se le debe al proveedor, ni que tasa de renta
+ * aplica. Eso lo pone la empresa, y se guarda aca.
+ *
+ * Una sola entidad para los dos informes, con `clave` diciendo que cosa es:
+ * el id de una cuenta del balance ('efectivo', 'ppe'...) o un parametro del
+ * estado de resultados ('er_tasa_impuesto'...). Asi agregar una cuenta nueva
+ * no obliga a migrar nada.
+ */
+export interface ValorInforme {
+  id: ID
+  periodo: Mes
+  clave: string
+  monto: number
+}
+
 // =====================================================================
 // 9. LOS DATOS CRUDOS, AGRUPADOS POR MODULO
 // =====================================================================
@@ -1410,6 +1430,8 @@ export interface DatosComercial {
   gastos: Gasto[]
   /** Los numeros que la empresa pone a mano en el punto de equilibrio. */
   supuestos_equilibrio: SupuestoEquilibrio[]
+  /** Los numeros que la empresa pone a mano en los estados financieros. */
+  valores_informe: ValorInforme[]
 }
 
 /** Todo lo crudo junto. Es lo que entra a `calcularTodo` y lo que se respalda. */
