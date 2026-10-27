@@ -1,5 +1,5 @@
 /**
- * LOS DOS ESTADOS FINANCIEROS.
+ * EL ESTADO DE RESULTADOS.
  *
  * La prueba que manda es la del taller: con la empresa XYZ ya resuelta, la
  * utilidad bruta tiene que dar 47.293.142 y el margen exactamente 35%. Sale de
@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 
 import respaldo from '../ejemplos/taller-octubre-xyz.json'
 import { calcularTodo } from '../src/datos'
-import { CUENTAS_BALANCE, estadoResultados, estadoSituacion } from '../src/lib/estados'
+import { estadoResultados } from '../src/lib/estados'
 import type { DatosCrudos } from '../src/lib/tipos'
 
 const datos = respaldo as unknown as DatosCrudos
@@ -107,116 +107,5 @@ describe('estado de resultados · el taller de octubre', () => {
     const vacio = erTaller({ hojas: [] })
     expect(vacio.ventas).toBe(0)
     expect(vacio.faltantes.some((f) => /no hay ninguna hoja de costos terminada/i.test(f))).toBe(true)
-  })
-})
-
-describe('estado de situación financiera', () => {
-  const base = {
-    config: datos.config,
-    periodo: '2026-09',
-    valor_inventario: c.valorInventario,
-    producto_en_proceso: 0,
-    producto_terminado: 0,
-    utilidad_ejercicio: 43_593_142.01,
-  }
-
-  it('autollena el inventario del Kardex y la utilidad del ejercicio', () => {
-    const b = estadoSituacion({ ...base, manuales: {} })
-    const porId = Object.fromEntries(b.cuentas.map((x) => [x.id, x]))
-
-    expect(porId.inv_materias_primas.monto).toBeCloseTo(8_365_874.52, 2)
-    expect(porId.inv_materias_primas.origen).toBe('derivado')
-    expect(porId.utilidad_ejercicio.monto).toBeCloseTo(43_593_142.01, 2)
-    expect(porId.efectivo.origen).toBe('manual')
-  })
-
-  it('la depreciación acumulada RESTA dentro del activo no corriente', () => {
-    const b = estadoSituacion({
-      ...base,
-      manuales: { ppe: 50_000_000, depreciacion_acumulada: 12_000_000 },
-    })
-
-    expect(b.activo_no_corriente).toBe(38_000_000)
-  })
-
-  /* EL TEST QUE PIDE EL TALLER: que detecte el descuadre. */
-  it('DETECTA el descuadre y dice por cuánto, sin ajustar nada', () => {
-    const b = estadoSituacion({
-      ...base,
-      manuales: { efectivo: 1_000_000, capital: 500_000 },
-    })
-
-    expect(b.cuadra).toBe(false)
-    // activo = 1.000.000 + 8.365.874,52 ; pasivo+patrimonio = 500.000 + 43.593.142,01
-    expect(b.total_activo).toBeCloseTo(9_365_874.52, 2)
-    expect(b.total_pasivo_patrimonio).toBeCloseTo(44_093_142.01, 2)
-    expect(b.descuadre).toBeCloseTo(-34_727_267.49, 2)
-    expect(b.advertencias.some((a) => /mayor que el activo/i.test(a))).toBe(true)
-
-    // y NO se tocó ninguna cuenta para forzar el cierre
-    const porId = Object.fromEntries(b.cuentas.map((x) => [x.id, x]))
-    expect(porId.efectivo.monto).toBe(1_000_000)
-    expect(porId.capital.monto).toBe(500_000)
-  })
-
-  it('cuadra cuando las cuentas manuales cierran la ecuación', () => {
-    /*
-      activo = efectivo 40.000.000 + inventario 8.365.874,52 = 48.365.874,52
-      pasivo + patrimonio = 4.772.732,51 + 43.593.142,01 = 48.365.874,52
-    */
-    const b = estadoSituacion({
-      ...base,
-      manuales: { efectivo: 40_000_000, cuentas_por_pagar: 4_772_732.51 },
-    })
-
-    expect(b.cuadra).toBe(true)
-    expect(Math.abs(b.descuadre)).toBeLessThan(0.005)
-  })
-
-  it('un descuadre de menos de medio centavo se considera cuadrado', () => {
-    const b = estadoSituacion({
-      ...base,
-      valor_inventario: 0,
-      utilidad_ejercicio: 0,
-      manuales: { efectivo: 1_000_000, capital: 1_000_000.004 },
-    })
-
-    expect(b.cuadra).toBe(true)
-  })
-
-  it('avisa cuando no se ha escrito ninguna cuenta', () => {
-    const b = estadoSituacion({ ...base, manuales: {} })
-    expect(b.advertencias.some((a) => /no escribiste ninguna cuenta/i.test(a))).toBe(true)
-  })
-
-  it('el catálogo cubre los cinco grupos y marca cuáles son derivadas', () => {
-    const grupos = new Set(CUENTAS_BALANCE.map((x) => x.grupo))
-    expect(grupos.size).toBe(5)
-
-    const derivadas = CUENTAS_BALANCE.filter((x) => x.derivada).map((x) => x.id)
-    expect(derivadas).toEqual([
-      'inv_materias_primas',
-      'inv_producto_proceso',
-      'inv_producto_terminado',
-      'utilidad_ejercicio',
-    ])
-  })
-})
-
-describe('los dos estados se hablan', () => {
-  it('la utilidad del balance es la utilidad neta del estado de resultados', () => {
-    const r = erTaller({ tasa_impuesto_pct: 35 })
-    const b = estadoSituacion({
-      config: datos.config,
-      periodo: '2026-09',
-      valor_inventario: c.valorInventario,
-      producto_en_proceso: 0,
-      producto_terminado: 0,
-      utilidad_ejercicio: r.utilidad_neta,
-      manuales: {},
-    })
-
-    const utilidad = b.cuentas.find((x) => x.id === 'utilidad_ejercicio')
-    expect(utilidad?.monto).toBeCloseTo(r.utilidad_neta, 6)
   })
 })

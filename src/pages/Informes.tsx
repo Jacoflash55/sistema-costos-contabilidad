@@ -3,25 +3,18 @@ import { useState } from 'react'
 import {
   Aviso,
   Boton,
-  BotonConfirmar,
   Campo,
-  CeldaEditable,
   Cifra,
   InputCifra,
-  Pestanas,
-  Pildora,
   Rejilla,
   Selector,
   Tarjeta,
   TituloSeccion,
 } from '../components/ui'
 import { useEstado } from '../contexto'
-import { CUENTAS_BALANCE, ETIQUETA_GRUPO_BALANCE } from '../lib/estados'
-import type { CuentaBalance, EstadoResultados, EstadoSituacion, GrupoBalance } from '../lib/estados'
+import type { EstadoResultados } from '../lib/estados'
 import { cop, pct } from '../lib/formato'
 import type { Mes } from '../lib/tipos'
-
-type Seccion = 'resultados' | 'situacion'
 
 /**
  * Un renglón de estado financiero.
@@ -110,7 +103,6 @@ function Encabezado({
 
 export function Informes() {
   const { calculado } = useEstado()
-  const [seccion, setSeccion] = useState<Seccion>('resultados')
 
   const periodos = calculado.periodosCIF
   const [periodo, setPeriodo] = useState<Mes>('')
@@ -137,10 +129,10 @@ export function Informes() {
       <Tarjeta className="no-imprimir" compacta>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Informes financieros</h2>
+            <h2 className="text-lg font-semibold tracking-tight">Estado de resultados</h2>
             <p className="text-sm text-suave">
-              Se arman solos con lo que ya registraste. Las cuentas que el sistema no puede saber las
-              escribís vos.
+              Se arma solo con lo que ya registraste: ventas y costo de ventas de las hojas, gastos por
+              naturaleza de categoría.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -158,27 +150,12 @@ export function Informes() {
         </div>
       </Tarjeta>
 
-      <div className="no-imprimir">
-        <Pestanas<Seccion>
-          valor={seccion}
-          onChange={setSeccion}
-          opciones={[
-            { valor: 'resultados', texto: 'Estado de resultados' },
-            { valor: 'situacion', texto: 'Situación financiera' },
-          ]}
-        />
-      </div>
-
-      {seccion === 'resultados' ? (
-        <Resultados periodo={periodoActivo} informe={informe.resultados} />
-      ) : (
-        <Situacion periodo={periodoActivo} informe={informe.situacion} />
-      )}
+      <Resultados periodo={periodoActivo} informe={informe} />
 
       <p className="no-imprimir text-xs text-tenue">
-        Informes <strong>académicos</strong>: tienen la estructura de un estado financiero para resolver
+        Informe <strong>académico</strong>: tiene la estructura de un estado de resultados para resolver
         el taller, no un juego completo bajo NIIF. No hay notas, ni comparativo con el período anterior,
-        ni estado de flujos de efectivo.
+        ni conciliación fiscal.
       </p>
     </div>
   )
@@ -353,150 +330,3 @@ function Resultados({ periodo, informe: r }: { periodo: Mes; informe: EstadoResu
   )
 }
 
-// =====================================================================
-// Estado de situación financiera
-// =====================================================================
-
-const ORDEN_GRUPOS: readonly GrupoBalance[] = [
-  'activo_corriente',
-  'activo_no_corriente',
-  'pasivo_corriente',
-  'pasivo_no_corriente',
-  'patrimonio',
-]
-
-function Situacion({ periodo, informe: b }: { periodo: Mes; informe: EstadoSituacion }) {
-  const { fijarValorInforme, limpiarValoresInforme } = useEstado()
-
-  const delGrupo = (g: GrupoBalance) => b.cuentas.filter((c) => c.grupo === g)
-
-  const subtotal: Record<GrupoBalance, number> = {
-    activo_corriente: b.activo_corriente,
-    activo_no_corriente: b.activo_no_corriente,
-    pasivo_corriente: b.pasivo_corriente,
-    pasivo_no_corriente: b.pasivo_no_corriente,
-    patrimonio: b.patrimonio,
-  }
-
-  const cuenta = (c: CuentaBalance) => (
-    <Renglon
-      key={c.id}
-      concepto={c.nombre}
-      monto={c.monto}
-      nivel={1}
-      resta={c.resta}
-      nota={c.ayuda}
-      derecha={
-        c.derivada ? (
-          <span className="flex items-center gap-2">
-            <Pildora tono="neutro">Derivado</Pildora>
-            <span className="cifra w-36 shrink-0 text-right text-sm tabular-nums">{cop(c.monto)}</span>
-          </span>
-        ) : (
-          <span className="no-imprimir-inline flex items-center gap-2">
-            <span className="w-36 shrink-0">
-              <CeldaEditable
-                valor={c.monto}
-                formato={(n) => cop(n)}
-                paso={100_000}
-                onChange={(n) => fijarValorInforme(periodo, c.id, n)}
-              />
-            </span>
-          </span>
-        )
-      }
-    />
-  )
-
-  return (
-    <div className="space-y-4">
-      {b.advertencias.map((a, i) => (
-        <Aviso key={i} tono={b.cuadra ? 'aviso' : 'negativo'} className="no-imprimir">
-          {a}
-        </Aviso>
-      ))}
-
-      <Tarjeta className="no-imprimir" compacta>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-suave">
-            Las cuentas marcadas <strong>Derivado</strong> las calcula el sistema. Las demás se escriben
-            con un clic en la cifra.
-          </p>
-          <BotonConfirmar
-            variante="fantasma"
-            textoConfirmar="Sí, borrar las cuentas"
-            onConfirmar={() => limpiarValoresInforme(periodo)}
-          >
-            Vaciar lo escrito
-          </BotonConfirmar>
-        </div>
-      </Tarjeta>
-
-      <Tarjeta className="hoja-imprimible">
-        <Encabezado
-          empresa={b.empresa}
-          nit={b.nit}
-          titulo="Estado de situación financiera"
-          periodo={periodo}
-        />
-
-        {ORDEN_GRUPOS.map((g) => (
-          <div key={g} className={g === 'pasivo_corriente' ? 'mt-5' : ''}>
-            <Renglon concepto={ETIQUETA_GRUPO_BALANCE[g]} monto={subtotal[g]} tipo="subtotal" />
-            {delGrupo(g).map(cuenta)}
-          </div>
-        ))}
-
-        <div className="mt-5">
-          <Renglon concepto="TOTAL ACTIVO" monto={b.total_activo} tipo="total" />
-          <Renglon
-            concepto="TOTAL PASIVO + PATRIMONIO"
-            monto={b.total_pasivo_patrimonio}
-            tipo="total"
-          />
-        </div>
-
-        <div
-          className={`mt-4 rounded-lg border p-3 ${
-            b.cuadra ? 'border-positivo/40 bg-positivo/8' : 'border-negativo/40 bg-negativo/8'
-          }`}
-        >
-          {b.cuadra ? (
-            <p className="text-sm font-semibold text-positivo">
-              ✓ El balance cuadra: Activo = Pasivo + Patrimonio
-            </p>
-          ) : (
-            <div>
-              <p className="text-sm font-semibold text-negativo">
-                ✕ El balance NO cuadra · descuadre de {cop(Math.abs(b.descuadre))}
-              </p>
-              <p className="mt-1 text-xs opacity-90">
-                {b.descuadre > 0
-                  ? 'El activo es mayor: falta registrar una deuda o un aporte.'
-                  : 'Pasivo más patrimonio es mayor: falta registrar un bien o sobra una deuda.'}
-              </p>
-            </div>
-          )}
-        </div>
-      </Tarjeta>
-
-      <Rejilla columnas={3}>
-        <Cifra etiqueta="Total activo" valor={cop(b.total_activo)} tamano="sm" />
-        <Cifra etiqueta="Total pasivo" valor={cop(b.total_pasivo)} tamano="sm" />
-        <Cifra
-          etiqueta="Patrimonio"
-          valor={cop(b.patrimonio)}
-          tono={b.patrimonio >= 0 ? 'neutro' : 'negativo'}
-          tamano="sm"
-        />
-      </Rejilla>
-
-      <p className="no-imprimir text-xs text-tenue">
-        <strong>Por qué no cuadra solo.</strong> El sistema nunca mete la diferencia en una cuenta para
-        forzar el cierre. Un balance que cuadra a la fuerza esconde justamente el error que había que
-        encontrar; uno que no cuadra te dice que falta registrar algo. Las cuentas derivadas{' '}
-        {CUENTAS_BALANCE.filter((c) => c.derivada).length} salen del Kardex y del estado de resultados.
-      </p>
-    </div>
-  )
-}

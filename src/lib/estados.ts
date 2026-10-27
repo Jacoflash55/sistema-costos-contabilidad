@@ -1,14 +1,14 @@
 /**
- * LOS DOS ESTADOS FINANCIEROS. Funciones PURAS que ARMAN los informes leyendo
- * lo que los otros modulos ya calcularon.
+ * EL ESTADO DE RESULTADOS. Funciones PURAS que ARMAN el informe leyendo lo
+ * que los otros modulos ya calcularon.
  *
  * ESTE ARCHIVO NO CALCULA NINGUN COSTO, igual que `hoja.ts`. Las ventas y el
- * costo de ventas salen de las hojas de costos; el inventario, del Kardex; los
- * gastos, de la naturaleza de cada categoria y de la clasificacion de cada
- * trabajador. Aqui solo se agrupa y se resta.
+ * costo de ventas salen de las hojas de costos; los gastos, de la naturaleza
+ * de cada categoria y de la clasificacion de cada trabajador. Aqui solo se
+ * agrupa y se resta.
  *
  * ---------------------------------------------------------------------
- * EL ESTADO DE RESULTADOS
+ * LA ESTRUCTURA
  *
  *   ventas
  *   - costo de ventas                 (material + MOD + CIF aplicado)
@@ -23,33 +23,15 @@
  *
  * DE DONDE SALEN LAS VENTAS. Si hay ventas registradas, mandan esas. Si no,
  * se asume que lo producido se vendio al precio sugerido de la hoja, y el
- * informe lo dice en voz alta: es un SUPUESTO, no un dato, y confundirlo seria
- * presentar como hecho algo que nadie registro.
- *
- * ---------------------------------------------------------------------
- * EL ESTADO DE SITUACION FINANCIERA
- *
- * Es MIXTO y no puede ser otra cosa: este sistema es de costos, no de
- * contabilidad completa. Sabe cuanto vale el inventario y cuanta utilidad dio
- * el periodo, porque eso lo calculo el. No sabe cuanta plata hay en el banco
- * ni cuanto se debe, porque nadie se lo dijo nunca.
- *
- * Entonces: lo que el sistema sabe se autollena y se marca como DERIVADO; lo
- * demas son campos que la persona escribe, marcados MANUAL. Y al final se
- * verifica la ecuacion contable:
- *
- *   ACTIVO = PASIVO + PATRIMONIO
- *
- * Si no cuadra, se muestra el descuadre. NUNCA se ajusta solo para que cierre:
- * un balance que cuadra a la fuerza esconde justamente el error que habia que
- * encontrar.
+ * informe lo dice en voz alta: es un SUPUESTO, no un dato, y confundirlo
+ * seria presentar como hecho algo que nadie registro.
  *
  * ---------------------------------------------------------------------
  * AVISO ACADEMICO
  *
- * Es la estructura de un estado financiero para resolver un taller, no un
+ * Es la estructura de un estado de resultados para resolver un taller, no un
  * juego completo bajo NIIF. No hay notas, ni comparativo con el periodo
- * anterior, ni estado de flujos de efectivo, ni conciliacion fiscal.
+ * anterior, ni conciliacion fiscal.
  */
 
 import { divSegura } from './calc'
@@ -59,7 +41,6 @@ import type {
   Config,
   Gasto,
   HojaCostos,
-  ID,
   Liquidacion,
   Mes,
   Producto,
@@ -67,7 +48,7 @@ import type {
 } from './tipos'
 
 // =====================================================================
-// 1. ESTADO DE RESULTADOS
+// EL INFORME
 // =====================================================================
 
 export interface LineaVenta {
@@ -349,327 +330,3 @@ export function estadoResultados(e: EntradaEstadoResultados): EstadoResultados {
   }
 }
 
-// =====================================================================
-// 2. ESTADO DE SITUACION FINANCIERA
-// =====================================================================
-
-export type GrupoBalance =
-  | 'activo_corriente'
-  | 'activo_no_corriente'
-  | 'pasivo_corriente'
-  | 'pasivo_no_corriente'
-  | 'patrimonio'
-
-export const ETIQUETA_GRUPO_BALANCE: Record<GrupoBalance, string> = {
-  activo_corriente: 'Activo corriente',
-  activo_no_corriente: 'Activo no corriente',
-  pasivo_corriente: 'Pasivo corriente',
-  pasivo_no_corriente: 'Pasivo no corriente',
-  patrimonio: 'Patrimonio',
-}
-
-export interface DefinicionCuenta {
-  id: string
-  nombre: string
-  grupo: GrupoBalance
-  /** true cuando el sistema la calcula y no se puede escribir encima. */
-  derivada: boolean
-  /** true cuando RESTA dentro de su grupo (depreciación acumulada). */
-  resta?: boolean
-  ayuda?: string
-}
-
-/**
- * EL CATALOGO DE CUENTAS, fijo a proposito.
- *
- * Es el minimo que un taller pide y nada mas. Dejarlo cerrado tiene una
- * ventaja concreta: el informe siempre se ve igual y se puede comparar entre
- * periodos. Si hiciera falta una cuenta mas, se agrega aca y aparece sola en
- * la pantalla.
- */
-export const CUENTAS_BALANCE: readonly DefinicionCuenta[] = [
-  {
-    id: 'efectivo',
-    nombre: 'Efectivo y equivalentes',
-    grupo: 'activo_corriente',
-    derivada: false,
-    ayuda: 'Caja y bancos.',
-  },
-  {
-    id: 'cuentas_por_cobrar',
-    nombre: 'Cuentas por cobrar',
-    grupo: 'activo_corriente',
-    derivada: false,
-    ayuda: 'Lo que los clientes deben.',
-  },
-  {
-    id: 'inv_materias_primas',
-    nombre: 'Inventario de materias primas',
-    grupo: 'activo_corriente',
-    derivada: true,
-    ayuda: 'Saldo valorizado del Kardex.',
-  },
-  {
-    id: 'inv_producto_proceso',
-    nombre: 'Inventario de producto en proceso',
-    grupo: 'activo_corriente',
-    derivada: true,
-    ayuda: 'Costo acumulado de las órdenes que no han terminado.',
-  },
-  {
-    id: 'inv_producto_terminado',
-    nombre: 'Inventario de producto terminado',
-    grupo: 'activo_corriente',
-    derivada: true,
-    ayuda: 'Lo producido que todavía no se vendió.',
-  },
-
-  {
-    id: 'ppe',
-    nombre: 'Propiedad, planta y equipo',
-    grupo: 'activo_no_corriente',
-    derivada: false,
-    ayuda: 'Maquinaria, muebles, edificios: al costo.',
-  },
-  {
-    id: 'depreciacion_acumulada',
-    nombre: 'Depreciación acumulada',
-    grupo: 'activo_no_corriente',
-    derivada: false,
-    resta: true,
-    ayuda: 'Escribila en positivo: el informe la resta sola.',
-  },
-
-  {
-    id: 'cuentas_por_pagar',
-    nombre: 'Cuentas por pagar',
-    grupo: 'pasivo_corriente',
-    derivada: false,
-    ayuda: 'Lo que se le debe a proveedores.',
-  },
-  {
-    id: 'obligaciones_laborales',
-    nombre: 'Obligaciones laborales',
-    grupo: 'pasivo_corriente',
-    derivada: false,
-    ayuda: 'Salarios, prestaciones y aportes por pagar.',
-  },
-  {
-    id: 'impuestos_por_pagar',
-    nombre: 'Impuestos por pagar',
-    grupo: 'pasivo_corriente',
-    derivada: false,
-    ayuda: 'El impuesto del estado de resultados, si no se ha pagado.',
-  },
-
-  {
-    id: 'obligaciones_financieras',
-    nombre: 'Obligaciones financieras',
-    grupo: 'pasivo_no_corriente',
-    derivada: false,
-    ayuda: 'Créditos a más de un año.',
-  },
-
-  {
-    id: 'capital',
-    nombre: 'Capital social',
-    grupo: 'patrimonio',
-    derivada: false,
-    ayuda: 'Lo que pusieron los socios.',
-  },
-  {
-    id: 'utilidades_retenidas',
-    nombre: 'Utilidades retenidas',
-    grupo: 'patrimonio',
-    derivada: false,
-    ayuda: 'Las utilidades de períodos anteriores que no se repartieron.',
-  },
-  {
-    id: 'utilidad_ejercicio',
-    nombre: 'Utilidad del ejercicio',
-    grupo: 'patrimonio',
-    derivada: true,
-    ayuda: 'La utilidad neta del estado de resultados.',
-  },
-]
-
-export interface CuentaBalance extends DefinicionCuenta {
-  monto: number
-  origen: 'derivado' | 'manual'
-}
-
-export interface EstadoSituacion {
-  empresa: string
-  nit: string
-  periodo: Mes
-
-  cuentas: CuentaBalance[]
-
-  activo_corriente: number
-  activo_no_corriente: number
-  total_activo: number
-
-  pasivo_corriente: number
-  pasivo_no_corriente: number
-  total_pasivo: number
-
-  patrimonio: number
-  total_pasivo_patrimonio: number
-
-  /** Activo - (Pasivo + Patrimonio). En cero, cuadra. */
-  descuadre: number
-  cuadra: boolean
-
-  advertencias: string[]
-}
-
-export interface EntradaEstadoSituacion {
-  config: Config
-  periodo: Mes
-  /** Saldo valorizado del Kardex. */
-  valor_inventario: number
-  /** Costo acumulado de las ordenes que siguen abiertas. */
-  producto_en_proceso: number
-  /** Costo de lo producido que todavia no se vendio. */
-  producto_terminado: number
-  /** La utilidad neta del estado de resultados del mismo periodo. */
-  utilidad_ejercicio: number
-  /** Lo que la persona escribio, por id de cuenta. */
-  manuales: Readonly<Record<string, number>>
-}
-
-/** Medio centavo: por debajo de eso, el descuadre es ruido de coma flotante. */
-const TOLERANCIA = 0.005
-
-/**
- * Arma el balance y verifica la ecuacion contable.
- *
- * NO FUERZA EL CUADRE. Si el activo no coincide con pasivo mas patrimonio, el
- * informe lo dice y muestra por cuanto. Un balance que cuadra solo porque el
- * sistema metio la diferencia en alguna cuenta es peor que uno que no cuadra:
- * el segundo avisa que hay algo mal, el primero lo esconde.
- */
-export function estadoSituacion(e: EntradaEstadoSituacion): EstadoSituacion {
-  const advertencias: string[] = []
-
-  const derivados: Record<string, number> = {
-    inv_materias_primas: e.valor_inventario,
-    inv_producto_proceso: e.producto_en_proceso,
-    inv_producto_terminado: e.producto_terminado,
-    utilidad_ejercicio: e.utilidad_ejercicio,
-  }
-
-  const cuentas: CuentaBalance[] = CUENTAS_BALANCE.map((d) => {
-    const valor = d.derivada ? (derivados[d.id] ?? 0) : (e.manuales[d.id] ?? 0)
-    const monto = Number.isFinite(valor) ? valor : 0
-    return { ...d, monto, origen: d.derivada ? 'derivado' : 'manual' }
-  })
-
-  /** Suma un grupo respetando las cuentas que restan. */
-  const suma = (g: GrupoBalance) =>
-    cuentas
-      .filter((c) => c.grupo === g)
-      .reduce((s, c) => s + (c.resta ? -c.monto : c.monto), 0)
-
-  const activo_corriente = suma('activo_corriente')
-  const activo_no_corriente = suma('activo_no_corriente')
-  const total_activo = activo_corriente + activo_no_corriente
-
-  const pasivo_corriente = suma('pasivo_corriente')
-  const pasivo_no_corriente = suma('pasivo_no_corriente')
-  const total_pasivo = pasivo_corriente + pasivo_no_corriente
-
-  const patrimonio = suma('patrimonio')
-  const total_pasivo_patrimonio = total_pasivo + patrimonio
-
-  const descuadre = total_activo - total_pasivo_patrimonio
-  const cuadra = Math.abs(descuadre) < TOLERANCIA
-
-  const sinLlenar = cuentas.filter((c) => !c.derivada && c.monto === 0).length
-  if (sinLlenar === cuentas.filter((c) => !c.derivada).length) {
-    advertencias.push(
-      'Todavía no escribiste ninguna cuenta: el balance solo muestra lo que el sistema deriva del Kardex y de la utilidad del período.',
-    )
-  }
-
-  if (!cuadra) {
-    advertencias.push(
-      descuadre > 0
-        ? 'El activo es mayor que pasivo más patrimonio: falta registrar una deuda o aporte.'
-        : 'Pasivo más patrimonio es mayor que el activo: falta registrar un bien o sobra una deuda.',
-    )
-  }
-
-  return {
-    empresa: e.config.empresa.razon_social || e.config.empresa.nombre,
-    nit: e.config.empresa.nit,
-    periodo: e.periodo,
-
-    cuentas,
-
-    activo_corriente,
-    activo_no_corriente,
-    total_activo,
-
-    pasivo_corriente,
-    pasivo_no_corriente,
-    total_pasivo,
-
-    patrimonio,
-    total_pasivo_patrimonio,
-
-    descuadre,
-    cuadra,
-
-    advertencias,
-  }
-}
-
-// =====================================================================
-// 3. LO QUE EL BALANCE NECESITA DE PRODUCCION
-// =====================================================================
-
-/**
- * Parte el costo de las ordenes en inventario de PROCESO y de TERMINADO.
- *
- *   en proceso  = ordenes que todavia no terminaron
- *   terminado   = lo producido que no se vendio
- *
- * Con el supuesto de que todo lo producido se vende, el terminado da cero y
- * eso es correcto, no un error: si se vendio todo, no queda nada en bodega.
- */
-export function inventariosDeProduccion(
-  hojas: readonly HojaCostos[],
-  unidadesVendidasPorProducto: Readonly<Record<ID, number>> = {},
-  hayVentasRegistradas = false,
-): { en_proceso: number; terminado: number } {
-  let en_proceso = 0
-  let terminado = 0
-
-  /** Cuantas unidades de cada producto quedan por vender, mientras se recorre. */
-  const porVender: Record<string, number> = {}
-  for (const h of hojas) {
-    if (h.estado_orden === 'terminada') {
-      porVender[h.producto_codigo] = (porVender[h.producto_codigo] ?? 0) + h.cantidad_producida
-    }
-  }
-
-  for (const h of hojas) {
-    if (h.estado_orden === 'anulada') continue
-
-    if (h.estado_orden !== 'terminada') {
-      en_proceso += h.costo_total
-      continue
-    }
-
-    if (!hayVentasRegistradas) continue // se vendio todo: no queda terminado
-
-    const vendidas = unidadesVendidasPorProducto[h.producto_codigo] ?? 0
-    const disponibles = porVender[h.producto_codigo] ?? 0
-    const sinVender = Math.max(0, disponibles - vendidas)
-    // se valora al costo unitario de esta hoja
-    terminado += Math.min(sinVender, h.cantidad_producida) * h.costo_unitario
-  }
-
-  return { en_proceso, terminado }
-}

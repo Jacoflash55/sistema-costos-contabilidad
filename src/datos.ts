@@ -24,8 +24,8 @@ import tallerJson from '../ejemplos/taller-octubre-xyz.json'
 
 import { calcularCIF, periodoDeOrden } from './lib/cif'
 import { escenarioEquilibrio } from './lib/equilibrio'
-import { estadoResultados, estadoSituacion, inventariosDeProduccion } from './lib/estados'
-import type { EstadoResultados, EstadoSituacion } from './lib/estados'
+import { estadoResultados } from './lib/estados'
+import type { EstadoResultados } from './lib/estados'
 import type { EscenarioEquilibrio } from './lib/equilibrio'
 import { armarHoja } from './lib/hoja'
 import { construirTarjetas, costoReceta, materialesDeOrdenes, metodoEfectivo } from './lib/kardex'
@@ -455,9 +455,7 @@ export function calcularTodo(datos: DatosCrudos, fechaHoy: string = hoy()) {
 
   const valorDe = (periodo: Mes, clave: string): number | undefined =>
     valoresInforme.find((v) => v.periodo === periodo && v.clave === clave)?.monto
-
-  const informesPorPeriodo: Record<Mes, { resultados: EstadoResultados; situacion: EstadoSituacion }> =
-    {}
+  const informesPorPeriodo: Record<Mes, EstadoResultados> = {}
 
   for (const periodo of periodosCIF) {
     const hojasDelPeriodo = hojas.filter((h) => periodoPorOrden[h.orden_id] === periodo)
@@ -466,7 +464,7 @@ export function calcularTodo(datos: DatosCrudos, fechaHoy: string = hoy()) {
       nomina.periodos.some((p) => p.id === l.periodo_id && p.mes === periodo),
     )
 
-    const resultados = estadoResultados({
+    informesPorPeriodo[periodo] = estadoResultados({
       config,
       periodo,
       hojas: hojasDelPeriodo,
@@ -480,27 +478,6 @@ export function calcularTodo(datos: DatosCrudos, fechaHoy: string = hoy()) {
       ingresos_financieros: valorDe(periodo, 'er_ingresos_financieros') ?? 0,
       gastos_financieros_extra: valorDe(periodo, 'er_gastos_financieros') ?? 0,
     })
-
-    const inventarios = inventariosDeProduccion(hojasDelPeriodo, {}, resultados.ventas_supuestas === false)
-
-    /** Solo las cuentas que la persona escribio, por id. */
-    const manuales: Record<string, number> = {}
-    for (const v of valoresInforme) {
-      if (v.periodo === periodo && !v.clave.startsWith('er_')) manuales[v.clave] = v.monto
-    }
-
-    informesPorPeriodo[periodo] = {
-      resultados,
-      situacion: estadoSituacion({
-        config,
-        periodo,
-        valor_inventario: valorInventario,
-        producto_en_proceso: inventarios.en_proceso,
-        producto_terminado: inventarios.terminado,
-        utilidad_ejercicio: resultados.utilidad_neta,
-        manuales,
-      }),
-    }
   }
   /** Cuantas filas hay de cada cosa. Para los encabezados y el estado del sistema. */
   const conteos = {
@@ -601,7 +578,7 @@ export function calcularTodo(datos: DatosCrudos, fechaHoy: string = hoy()) {
     escenariosEquilibrio,
 
     // --- informes ---
-    /** Estado de resultados y balance de cada periodo, listos para mostrar. */
+    /** El estado de resultados de cada periodo, listo para mostrar. */
     informesPorPeriodo,
   }
 }
